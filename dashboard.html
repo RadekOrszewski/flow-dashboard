@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lead Time Dashboard</title>
+  <title>Flow Dashboard</title>
   <style>
     :root {
       color-scheme: light;
@@ -17,6 +17,7 @@
       --accent-soft: rgba(10, 122, 109, 0.12);
       --accent-2: #d66853;
       --accent-3: #d7a441;
+      --accent-4: #7561d0;
       --shadow: 0 24px 60px rgba(31, 42, 51, 0.12);
       --radius: 22px;
     }
@@ -77,15 +78,50 @@
       margin: 0;
       font-size: clamp(2rem, 4vw, 3.4rem);
       line-height: 1.05;
-      max-width: 10ch;
+      max-width: 12ch;
     }
 
     .hero p {
       margin: 0;
-      max-width: 70ch;
+      max-width: 78ch;
       color: var(--muted);
       font-size: 1rem;
       line-height: 1.6;
+    }
+
+    .tab-bar {
+      display: inline-flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 22px;
+      padding: 8px;
+      border-radius: 999px;
+      background: rgba(255, 250, 241, 0.74);
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(255, 255, 255, 0.72);
+    }
+
+    .tab-button {
+      padding: 11px 18px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .tab-button.active {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 10px 24px rgba(10, 122, 109, 0.22);
+    }
+
+    .tab-panel {
+      display: none;
+    }
+
+    .tab-panel.active {
+      display: block;
     }
 
     .layout {
@@ -116,14 +152,19 @@
       letter-spacing: 0.02em;
     }
 
-    .stack {
-      display: grid;
-      gap: 18px;
-    }
-
+    .stack,
+    .main,
+    .chart-wrap,
+    .summary-list,
+    .forecast-list,
     .field-grid {
       display: grid;
       gap: 12px;
+    }
+
+    .stack,
+    .main {
+      gap: 22px;
     }
 
     label {
@@ -148,6 +189,10 @@
       border: 1px solid rgba(31, 42, 51, 0.14);
       background: rgba(255, 255, 255, 0.95);
       color: var(--ink);
+    }
+
+    input[type="file"] {
+      padding: 10px;
     }
 
     .button-row {
@@ -185,11 +230,6 @@
       border: 1px solid rgba(31, 42, 51, 0.12);
     }
 
-    .main {
-      display: grid;
-      gap: 22px;
-    }
-
     .stats {
       display: grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -217,18 +257,15 @@
       font-weight: 800;
     }
 
-    .stat-card .sub {
+    .stat-card .sub,
+    .note,
+    .muted {
       color: var(--muted);
       font-size: 0.92rem;
     }
 
     .content-card {
       padding: 20px;
-    }
-
-    .chart-wrap {
-      display: grid;
-      gap: 12px;
     }
 
     .legend {
@@ -265,32 +302,19 @@
       gap: 22px;
     }
 
-    .forecast-list,
-    .summary-list {
-      display: grid;
-      gap: 12px;
-    }
-
-    .forecast-item,
-    .summary-item {
+    .summary-item,
+    .forecast-item {
       padding: 14px 16px;
       border-radius: 16px;
       background: rgba(255, 255, 255, 0.72);
       border: 1px solid rgba(31, 42, 51, 0.08);
     }
 
-    .forecast-item strong,
-    .summary-item strong {
+    .summary-item strong,
+    .forecast-item strong {
       display: block;
       font-size: 1rem;
       margin-bottom: 4px;
-    }
-
-    .summary-item span,
-    .forecast-item span,
-    .note,
-    .muted {
-      color: var(--muted);
     }
 
     .table-wrap {
@@ -362,6 +386,15 @@
       font-weight: 600;
     }
 
+    .empty-state {
+      padding: 30px 16px;
+      text-align: center;
+      color: var(--muted);
+      border: 1px dashed rgba(31, 42, 51, 0.18);
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.5);
+    }
+
     @media (max-width: 1080px) {
       .layout,
       .split {
@@ -392,174 +425,308 @@
       .stats {
         grid-template-columns: 1fr;
       }
+
+      .tab-bar {
+        display: grid;
+        width: 100%;
+      }
     }
   </style>
 </head>
 <body>
   <div class="shell">
     <section class="hero">
-      <div class="eyebrow">Lead Times 2024-25</div>
-      <h1>Forecast lead times with controllable history.</h1>
+      <div class="eyebrow">Flow Dashboard</div>
+      <h1>Lead time forecasting and cycle time monitoring in one local page.</h1>
       <p>
-        Filter by size, narrow the historical period, add new completions, exclude noisy outliers,
-        and immediately refresh the percentile-based forecast view.
+        Use the lead-time tab for percentile planning, then switch to the XMR tab to load Team Cycle Time data
+        and inspect cycle times as a run chart without leaving this local HTML dashboard.
       </p>
     </section>
 
-    <div class="layout">
-      <aside class="panel sidebar">
-        <div class="stack">
-          <section>
-            <h2 class="section-title">Filters</h2>
-            <div class="field-grid">
-              <label>
-                Size
-                <select id="sizeFilter"></select>
-              </label>
-              <label>
-                Period start
-                <input id="startDate" type="date">
-              </label>
-              <label>
-                Period end
-                <input id="endDate" type="date">
-              </label>
-              <label>
-                Forecast from
-                <input id="forecastDate" type="date">
-              </label>
-            </div>
-            <div class="button-row" style="margin-top: 12px;">
-              <button class="secondary" id="resetFilters" type="button">Reset filters</button>
-              <button class="ghost" id="restoreAll" type="button">Restore all data</button>
-            </div>
-          </section>
+    <nav class="tab-bar" aria-label="Dashboard tabs">
+      <button class="tab-button active" type="button" data-tab="lead">Lead Times</button>
+      <button class="tab-button" type="button" data-tab="xmr">XMR Cycle Time</button>
+    </nav>
 
-          <section>
-            <h2 class="section-title">Add completion</h2>
-            <div class="field-grid">
-              <label>
-                Size
-                <select id="newSize"></select>
-              </label>
-              <label>
-                Completion date
-                <input id="newDate" type="date">
-              </label>
-              <label>
-                Lead time in days
-                <input id="newLeadTime" type="number" min="1" step="1" placeholder="Required for percentile calculations">
-              </label>
-            </div>
-            <div class="button-row" style="margin-top: 12px;">
-              <button class="primary" id="addItem" type="button">Add item</button>
-            </div>
-            <div class="message" id="formMessage"></div>
-          </section>
+    <section class="tab-panel active" id="leadTab">
+      <div class="layout">
+        <aside class="panel sidebar">
+          <div class="stack">
+            <section>
+              <h2 class="section-title">Filters</h2>
+              <div class="field-grid">
+                <label>
+                  Size
+                  <select id="sizeFilter"></select>
+                </label>
+                <label>
+                  Period start
+                  <input id="startDate" type="date">
+                </label>
+                <label>
+                  Period end
+                  <input id="endDate" type="date">
+                </label>
+                <label>
+                  Forecast from
+                  <input id="forecastDate" type="date">
+                </label>
+              </div>
+              <div class="button-row" style="margin-top: 12px;">
+                <button class="secondary" id="resetFilters" type="button">Reset filters</button>
+                <button class="ghost" id="restoreAll" type="button">Restore all data</button>
+              </div>
+            </section>
 
-          <section>
-            <h2 class="section-title">Selection snapshot</h2>
-            <div class="summary-list" id="selectionSummary"></div>
-          </section>
-        </div>
-      </aside>
+            <section>
+              <h2 class="section-title">Add completion</h2>
+              <div class="field-grid">
+                <label>
+                  Size
+                  <select id="newSize"></select>
+                </label>
+                <label>
+                  Completion date
+                  <input id="newDate" type="date">
+                </label>
+                <label>
+                  Lead time in days
+                  <input id="newLeadTime" type="number" min="1" step="1" placeholder="Required for percentile calculations">
+                </label>
+              </div>
+              <div class="button-row" style="margin-top: 12px;">
+                <button class="primary" id="addItem" type="button">Add item</button>
+              </div>
+              <div class="message" id="leadMessage"></div>
+            </section>
 
-      <main class="main">
-        <section class="stats">
-          <article class="panel stat-card">
-            <div class="label">P50 Lead Time</div>
-            <div class="value" id="p50Value">-</div>
-            <div class="sub" id="p50Date">-</div>
-          </article>
-          <article class="panel stat-card">
-            <div class="label">P85 Lead Time</div>
-            <div class="value" id="p85Value">-</div>
-            <div class="sub" id="p85Date">-</div>
-          </article>
-          <article class="panel stat-card">
-            <div class="label">P98 Lead Time</div>
-            <div class="value" id="p98Value">-</div>
-            <div class="sub" id="p98Date">-</div>
-          </article>
-          <article class="panel stat-card">
-            <div class="label">Active Dataset</div>
-            <div class="value" id="activeCount">-</div>
-            <div class="sub" id="removedCount">-</div>
-          </article>
-        </section>
-
-        <section class="panel content-card chart-wrap">
-          <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start; flex-wrap:wrap;">
-            <div>
-              <h2 class="section-title" style="margin-bottom:6px;">Lead time distribution over completion dates</h2>
-              <div class="note">Points reflect the filtered, currently active dataset. Horizontal guides show selected percentiles.</div>
-            </div>
-            <div class="pill" id="selectionPill">Awaiting selection</div>
+            <section>
+              <h2 class="section-title">Selection snapshot</h2>
+              <div class="summary-list" id="selectionSummary"></div>
+            </section>
           </div>
-          <div class="legend">
-            <span class="legend-item"><span class="legend-swatch" style="background: var(--accent);"></span>Lead time</span>
-            <span class="legend-item"><span class="legend-swatch" style="background: var(--accent-2);"></span>P50</span>
-            <span class="legend-item"><span class="legend-swatch" style="background: var(--accent-3);"></span>P85</span>
-            <span class="legend-item"><span class="legend-swatch" style="background: #7561d0;"></span>P98</span>
-          </div>
-          <svg class="plot" id="plot" viewBox="0 0 960 420" preserveAspectRatio="xMidYMid meet" aria-label="Lead time chart"></svg>
-        </section>
+        </aside>
 
-        <section class="split">
+        <main class="main">
+          <section class="stats">
+            <article class="panel stat-card">
+              <div class="label">P50 Lead Time</div>
+              <div class="value" id="p50Value">-</div>
+              <div class="sub" id="p50Date">-</div>
+            </article>
+            <article class="panel stat-card">
+              <div class="label">P85 Lead Time</div>
+              <div class="value" id="p85Value">-</div>
+              <div class="sub" id="p85Date">-</div>
+            </article>
+            <article class="panel stat-card">
+              <div class="label">P98 Lead Time</div>
+              <div class="value" id="p98Value">-</div>
+              <div class="sub" id="p98Date">-</div>
+            </article>
+            <article class="panel stat-card">
+              <div class="label">Active Dataset</div>
+              <div class="value" id="activeCount">-</div>
+              <div class="sub" id="removedCount">-</div>
+            </article>
+          </section>
+
+          <section class="panel content-card chart-wrap">
+            <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start; flex-wrap:wrap;">
+              <div>
+                <h2 class="section-title" style="margin-bottom:6px;">Lead time distribution over completion dates</h2>
+                <div class="note">Points reflect the filtered, currently active dataset. Horizontal guides show selected percentiles.</div>
+              </div>
+              <div class="pill" id="selectionPill">Awaiting selection</div>
+            </div>
+            <div class="legend">
+              <span class="legend-item"><span class="legend-swatch" style="background: var(--accent);"></span>Lead time</span>
+              <span class="legend-item"><span class="legend-swatch" style="background: var(--accent-2);"></span>P50</span>
+              <span class="legend-item"><span class="legend-swatch" style="background: var(--accent-3);"></span>P85</span>
+              <span class="legend-item"><span class="legend-swatch" style="background: var(--accent-4);"></span>P98</span>
+            </div>
+            <svg class="plot" id="plot" viewBox="0 0 960 420" preserveAspectRatio="xMidYMid meet" aria-label="Lead time chart"></svg>
+          </section>
+
+          <section class="split">
+            <section class="panel content-card">
+              <h2 class="section-title">Forecast output</h2>
+              <div class="forecast-list" id="forecastList"></div>
+            </section>
+
+            <section class="panel content-card">
+              <h2 class="section-title">Usage notes</h2>
+              <div class="summary-list">
+                <div class="summary-item">
+                  <strong>Percentiles use the active subset.</strong>
+                  <span>Changing size, dates, additions, or exclusions recalculates the forecast immediately.</span>
+                </div>
+                <div class="summary-item">
+                  <strong>Outliers are manually controlled.</strong>
+                  <span>Use the exclude action in the table to remove a point from calculations, then restore all when needed.</span>
+                </div>
+                <div class="summary-item">
+                  <strong>Added rows stay local.</strong>
+                  <span>The dashboard keeps your manual edits in browser storage. It does not write back to the Excel file.</span>
+                </div>
+              </div>
+            </section>
+          </section>
+
           <section class="panel content-card">
-            <h2 class="section-title">Forecast output</h2>
-            <div class="forecast-list" id="forecastList"></div>
+            <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start; flex-wrap:wrap; margin-bottom:14px;">
+              <div>
+                <h2 class="section-title" style="margin-bottom:6px;">Detailed records</h2>
+                <div class="note">The table shows the filtered history. Excluded rows remain visible for auditability.</div>
+              </div>
+              <div class="pill" id="tableSummary">0 rows</div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Status</th>
+                    <th>Completion date</th>
+                    <th>Size</th>
+                    <th>Lead time</th>
+                    <th>Source</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="recordsBody"></tbody>
+              </table>
+            </div>
+          </section>
+        </main>
+      </div>
+    </section>
+
+    <section class="tab-panel" id="xmrTab">
+      <div class="layout">
+        <aside class="panel sidebar">
+          <div class="stack">
+            <section>
+              <h2 class="section-title">XMR workbook</h2>
+              <div class="field-grid">
+                <label>
+                  Load Team Cycle Time for XMR
+                  <input id="xmrFile" type="file" accept=".xlsx,.xls,.xlsm,.csv">
+                </label>
+                <label>
+                  Sheet
+                  <select id="xmrSheet" disabled></select>
+                </label>
+                <label>
+                  Date column
+                  <select id="xmrDateColumn" disabled></select>
+                </label>
+                <label>
+                  Cycle time column
+                  <select id="xmrCycleColumn" disabled></select>
+                </label>
+              </div>
+              <div class="message" id="xmrMessage"></div>
+            </section>
+
+            <section>
+              <h2 class="section-title">Run chart filter</h2>
+              <div class="field-grid">
+                <label>
+                  Period start
+                  <input id="xmrStartDate" type="date" disabled>
+                </label>
+                <label>
+                  Period end
+                  <input id="xmrEndDate" type="date" disabled>
+                </label>
+              </div>
+              <div class="button-row" style="margin-top: 12px;">
+                <button class="secondary" id="xmrReset" type="button" disabled>Reset XMR filters</button>
+              </div>
+            </section>
+
+            <section>
+              <h2 class="section-title">XMR snapshot</h2>
+              <div class="summary-list" id="xmrSummary">
+                <div class="summary-item">
+                  <strong>No file loaded</strong>
+                  <span>Choose the Team Cycle Time for XMR workbook to populate this tab.</span>
+                </div>
+              </div>
+            </section>
+          </div>
+        </aside>
+
+        <main class="main">
+          <section class="stats">
+            <article class="panel stat-card">
+              <div class="label">Median CT</div>
+              <div class="value" id="xmrMedian">-</div>
+              <div class="sub" id="xmrMedianSub">Awaiting workbook</div>
+            </article>
+            <article class="panel stat-card">
+              <div class="label">Average CT</div>
+              <div class="value" id="xmrAverage">-</div>
+              <div class="sub" id="xmrAverageSub">Awaiting workbook</div>
+            </article>
+            <article class="panel stat-card">
+              <div class="label">Visible Points</div>
+              <div class="value" id="xmrCount">-</div>
+              <div class="sub" id="xmrCountSub">No data loaded</div>
+            </article>
+            <article class="panel stat-card">
+              <div class="label">CT Range</div>
+              <div class="value" id="xmrRange">-</div>
+              <div class="sub" id="xmrRangeSub">No data loaded</div>
+            </article>
+          </section>
+
+          <section class="panel content-card chart-wrap">
+            <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start; flex-wrap:wrap;">
+              <div>
+                <h2 class="section-title" style="margin-bottom:6px;">Cycle time run chart</h2>
+                <div class="note">The run chart orders work items by date and overlays a median center line for the filtered subset.</div>
+              </div>
+              <div class="pill" id="xmrSelectionPill">Load workbook to begin</div>
+            </div>
+            <div class="legend">
+              <span class="legend-item"><span class="legend-swatch" style="background: var(--accent);"></span>Cycle time</span>
+              <span class="legend-item"><span class="legend-swatch" style="background: var(--accent-2);"></span>Median center line</span>
+            </div>
+            <svg class="plot" id="xmrPlot" viewBox="0 0 960 420" preserveAspectRatio="xMidYMid meet" aria-label="Cycle time run chart"></svg>
           </section>
 
           <section class="panel content-card">
-            <h2 class="section-title">Usage notes</h2>
-            <div class="summary-list">
-              <div class="summary-item">
-                <strong>Percentiles use the active subset.</strong>
-                <span>Changing size, dates, additions, or exclusions recalculates the forecast immediately.</span>
+            <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start; flex-wrap:wrap; margin-bottom:14px;">
+              <div>
+                <h2 class="section-title" style="margin-bottom:6px;">Parsed XMR rows</h2>
+                <div class="note">Rows are shown after the selected date and cycle time columns are interpreted successfully.</div>
               </div>
-              <div class="summary-item">
-                <strong>Outliers are manually controlled.</strong>
-                <span>Use the exclude action in the table to remove a point from calculations, then restore all when needed.</span>
-              </div>
-              <div class="summary-item">
-                <strong>Added rows stay local.</strong>
-                <span>The dashboard keeps your manual edits in browser storage. It does not write back to the Excel file.</span>
-              </div>
+              <div class="pill" id="xmrTableSummary">0 rows</div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Date</th>
+                    <th>Cycle time</th>
+                    <th>Source row</th>
+                  </tr>
+                </thead>
+                <tbody id="xmrBody"></tbody>
+              </table>
             </div>
           </section>
-        </section>
-
-        <section class="panel content-card">
-          <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start; flex-wrap:wrap; margin-bottom:14px;">
-            <div>
-              <h2 class="section-title" style="margin-bottom:6px;">Detailed records</h2>
-              <div class="note">The table shows the filtered history. Excluded rows remain visible for auditability.</div>
-            </div>
-            <div class="pill" id="tableSummary">0 rows</div>
-          </div>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Status</th>
-                  <th>Completion date</th>
-                  <th>Size</th>
-                  <th>Lead time</th>
-                  <th>Source</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody id="recordsBody"></tbody>
-            </table>
-          </div>
-        </section>
-      </main>
-    </div>
+        </main>
+      </div>
+    </section>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script>
-    const STORAGE_KEY = "lead-time-dashboard-state-v1";
+    const LEAD_STORAGE_KEY = "lead-time-dashboard-state-v1";
     const RAW_DATA = [
       { completionDate: "15 Lipca 2024", size: "S", leadTime: 49 },
       { completionDate: "22 Sierpnia 2024", size: "S", leadTime: 48 },
@@ -599,6 +766,39 @@
       { completionDate: "10 Grudnia 2025", size: "S", leadTime: 44 }
     ];
 
+    const XMR_RAW_DATA = [
+      { id: 1, started: "11.28.2023", closed: "1.5.2024", cycleTime: 38 },
+      { id: 2, started: "12.20.2023", closed: "1.11.2024", cycleTime: 24 },
+      { id: 3, started: "1.2.2024", closed: "1.16.2024", cycleTime: 14 },
+      { id: 4, started: "1.10.2024", closed: "1.17.2024", cycleTime: 9 },
+      { id: 5, started: "1.18.2024", closed: "1.22.2024", cycleTime: 4 },
+      { id: 6, started: "1.3.2024", closed: "1.26.2024", cycleTime: 25 },
+      { id: 7, started: "1.10.2024", closed: "1.29.2024", cycleTime: 19 },
+      { id: 8, started: "12.19.2023", closed: "2.6.2024", cycleTime: 51 },
+      { id: 9, started: "12.26.2023", closed: "2.12.2024", cycleTime: 48 },
+      { id: 10, started: "2.2.2024", closed: "2.15.2024", cycleTime: 15 },
+      { id: 11, started: "1.26.2024", closed: "2.17.2024", cycleTime: 22 },
+      { id: 12, started: "1.9.2024", closed: "2.18.2024", cycleTime: 42 },
+      { id: 13, started: "2.2.2024", closed: "2.19.2024", cycleTime: 17 },
+      { id: 14, started: "2.16.2024", closed: "2.21.2024", cycleTime: 7 },
+      { id: 15, started: "2.23.2024", closed: "2.28.2024", cycleTime: 5 },
+      { id: 16, started: "2.20.2024", closed: "3.12.2024", cycleTime: 20 },
+      { id: 17, started: "1.12.2024", closed: "3.14.2024", cycleTime: 63 },
+      { id: 18, started: "3.13.2024", closed: "3.19.2024", cycleTime: 6 },
+      { id: 19, started: "1.25.2024", closed: "3.20.2024", cycleTime: 56 },
+      { id: 20, started: "2.28.2024", closed: "3.22.2024", cycleTime: 24 },
+      { id: 21, started: "2.28.2024", closed: "3.22.2024", cycleTime: 22 },
+      { id: 22, started: "2.6.2024", closed: "3.26.2024", cycleTime: 50 },
+      { id: 23, started: "3.21.2024", closed: "3.27.2024", cycleTime: 8 },
+      { id: 24, started: "3.26.2024", closed: "3.28.2024", cycleTime: 2 },
+      { id: 25, started: "3.28.2024", closed: "3.29.2024", cycleTime: 3 },
+      { id: 26, started: "3.22.2024", closed: "3.30.2024", cycleTime: 8 },
+      { id: 27, started: "2.26.2024", closed: "4.1.2024", cycleTime: 36 },
+      { id: 28, started: "3.6.2024", closed: "4.2.2024", cycleTime: 27 },
+      { id: 29, started: "3.13.2024", closed: "4.9.2024", cycleTime: 29 },
+      { id: 30, started: "3.20.2024", closed: "4.9.2024", cycleTime: 20 }
+    ];
+
     const MONTHS = {
       stycznia: 0,
       lutego: 1,
@@ -615,54 +815,116 @@
     };
 
     const state = {
-      entries: loadState(),
-      filters: {
-        size: "ALL",
+      activeTab: "lead",
+      lead: {
+        entries: loadLeadState(),
+        filters: {
+          size: "ALL",
+          startDate: "",
+          endDate: "",
+          forecastDate: toInputDate(new Date())
+        }
+      },
+      xmr: {
+        workbookName: "",
+        sheets: {},
+        sheetNames: [],
+        selectedSheet: "",
+        headers: [],
+        dateColumn: "",
+        cycleColumn: "",
         startDate: "",
-        endDate: "",
-        forecastDate: toInputDate(new Date())
+        endDate: ""
       }
     };
 
     const elements = {
-      sizeFilter: document.getElementById("sizeFilter"),
-      startDate: document.getElementById("startDate"),
-      endDate: document.getElementById("endDate"),
-      forecastDate: document.getElementById("forecastDate"),
-      resetFilters: document.getElementById("resetFilters"),
-      restoreAll: document.getElementById("restoreAll"),
-      newSize: document.getElementById("newSize"),
-      newDate: document.getElementById("newDate"),
-      newLeadTime: document.getElementById("newLeadTime"),
-      addItem: document.getElementById("addItem"),
-      formMessage: document.getElementById("formMessage"),
-      selectionSummary: document.getElementById("selectionSummary"),
-      p50Value: document.getElementById("p50Value"),
-      p50Date: document.getElementById("p50Date"),
-      p85Value: document.getElementById("p85Value"),
-      p85Date: document.getElementById("p85Date"),
-      p98Value: document.getElementById("p98Value"),
-      p98Date: document.getElementById("p98Date"),
-      activeCount: document.getElementById("activeCount"),
-      removedCount: document.getElementById("removedCount"),
-      selectionPill: document.getElementById("selectionPill"),
-      forecastList: document.getElementById("forecastList"),
-      tableSummary: document.getElementById("tableSummary"),
-      recordsBody: document.getElementById("recordsBody"),
-      plot: document.getElementById("plot")
+      tabs: Array.from(document.querySelectorAll(".tab-button")),
+      panels: {
+        lead: document.getElementById("leadTab"),
+        xmr: document.getElementById("xmrTab")
+      },
+      lead: {
+        sizeFilter: document.getElementById("sizeFilter"),
+        startDate: document.getElementById("startDate"),
+        endDate: document.getElementById("endDate"),
+        forecastDate: document.getElementById("forecastDate"),
+        resetFilters: document.getElementById("resetFilters"),
+        restoreAll: document.getElementById("restoreAll"),
+        newSize: document.getElementById("newSize"),
+        newDate: document.getElementById("newDate"),
+        newLeadTime: document.getElementById("newLeadTime"),
+        addItem: document.getElementById("addItem"),
+        message: document.getElementById("leadMessage"),
+        selectionSummary: document.getElementById("selectionSummary"),
+        p50Value: document.getElementById("p50Value"),
+        p50Date: document.getElementById("p50Date"),
+        p85Value: document.getElementById("p85Value"),
+        p85Date: document.getElementById("p85Date"),
+        p98Value: document.getElementById("p98Value"),
+        p98Date: document.getElementById("p98Date"),
+        activeCount: document.getElementById("activeCount"),
+        removedCount: document.getElementById("removedCount"),
+        selectionPill: document.getElementById("selectionPill"),
+        forecastList: document.getElementById("forecastList"),
+        tableSummary: document.getElementById("tableSummary"),
+        recordsBody: document.getElementById("recordsBody"),
+        plot: document.getElementById("plot")
+      },
+      xmr: {
+        file: document.getElementById("xmrFile"),
+        sheet: document.getElementById("xmrSheet"),
+        dateColumn: document.getElementById("xmrDateColumn"),
+        cycleColumn: document.getElementById("xmrCycleColumn"),
+        startDate: document.getElementById("xmrStartDate"),
+        endDate: document.getElementById("xmrEndDate"),
+        reset: document.getElementById("xmrReset"),
+        message: document.getElementById("xmrMessage"),
+        summary: document.getElementById("xmrSummary"),
+        median: document.getElementById("xmrMedian"),
+        medianSub: document.getElementById("xmrMedianSub"),
+        average: document.getElementById("xmrAverage"),
+        averageSub: document.getElementById("xmrAverageSub"),
+        count: document.getElementById("xmrCount"),
+        countSub: document.getElementById("xmrCountSub"),
+        range: document.getElementById("xmrRange"),
+        rangeSub: document.getElementById("xmrRangeSub"),
+        selectionPill: document.getElementById("xmrSelectionPill"),
+        plot: document.getElementById("xmrPlot"),
+        tableSummary: document.getElementById("xmrTableSummary"),
+        body: document.getElementById("xmrBody")
+      }
     };
 
     init();
 
     function init() {
-      hydrateEntries();
-      buildSizeOptions();
-      bindInputs();
-      primeDefaultPeriod();
-      render();
+      setupTabs();
+      initLeadTab();
+      initXmrTab();
     }
 
-    function loadState() {
+    function setupTabs() {
+      elements.tabs.forEach((button) => {
+        button.addEventListener("click", () => setActiveTab(button.dataset.tab));
+      });
+    }
+
+    function setActiveTab(tabName) {
+      state.activeTab = tabName;
+      elements.tabs.forEach((button) => button.classList.toggle("active", button.dataset.tab === tabName));
+      Object.entries(elements.panels).forEach(([name, panel]) => panel.classList.toggle("active", name === tabName));
+    }
+
+    function initLeadTab() {
+      hydrateLeadEntries();
+      buildLeadSizeOptions();
+      bindLeadInputs();
+      primeLeadPeriod();
+      renderLead();
+    }
+
+    function loadLeadState() {
       const seeded = RAW_DATA.map((item, index) => ({
         id: `seed-${index + 1}`,
         completionDateText: item.completionDate,
@@ -674,11 +936,10 @@
       }));
 
       try {
-        const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+        const stored = JSON.parse(localStorage.getItem(LEAD_STORAGE_KEY) || "null");
         if (!stored || !Array.isArray(stored.entries)) {
           return seeded;
         }
-
         const byId = new Map(stored.entries.map((entry) => [entry.id, entry]));
         return seeded.map((entry) => {
           const override = byId.get(entry.id);
@@ -697,8 +958,8 @@
       }
     }
 
-    function hydrateEntries() {
-      state.entries = state.entries
+    function hydrateLeadEntries() {
+      state.lead.entries = state.lead.entries
         .filter((entry) => entry.completionDateIso && Number.isFinite(Number(entry.leadTime)))
         .map((entry) => ({
           ...entry,
@@ -707,87 +968,82 @@
         .sort((left, right) => left.completionDateIso.localeCompare(right.completionDateIso));
     }
 
-    function saveState() {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ entries: state.entries }));
+    function saveLeadState() {
+      localStorage.setItem(LEAD_STORAGE_KEY, JSON.stringify({ entries: state.lead.entries }));
     }
 
-    function buildSizeOptions() {
-      const sizes = Array.from(new Set(state.entries.map((entry) => entry.size))).sort();
-      const allOptions = ['<option value="ALL">All sizes</option>']
+    function buildLeadSizeOptions() {
+      const sizes = Array.from(new Set(state.lead.entries.map((entry) => entry.size))).sort();
+      elements.lead.sizeFilter.innerHTML = ['<option value="ALL">All sizes</option>']
         .concat(sizes.map((size) => `<option value="${size}">${size}</option>`))
         .join("");
-      const manualOptions = sizes.map((size) => `<option value="${size}">${size}</option>`).join("");
-      elements.sizeFilter.innerHTML = allOptions;
-      elements.newSize.innerHTML = manualOptions;
-      elements.sizeFilter.value = state.filters.size;
-      if (!elements.newSize.value && sizes[0]) {
-        elements.newSize.value = sizes[0];
+      elements.lead.newSize.innerHTML = sizes.map((size) => `<option value="${size}">${size}</option>`).join("");
+      elements.lead.sizeFilter.value = state.lead.filters.size;
+      if (!elements.lead.newSize.value && sizes[0]) {
+        elements.lead.newSize.value = sizes[0];
       }
     }
 
-    function bindInputs() {
-      elements.sizeFilter.addEventListener("change", () => {
-        state.filters.size = elements.sizeFilter.value;
-        render();
+    function bindLeadInputs() {
+      elements.lead.sizeFilter.addEventListener("change", () => {
+        state.lead.filters.size = elements.lead.sizeFilter.value;
+        renderLead();
       });
-      elements.startDate.addEventListener("change", () => {
-        state.filters.startDate = elements.startDate.value;
-        render();
+      elements.lead.startDate.addEventListener("change", () => {
+        state.lead.filters.startDate = elements.lead.startDate.value;
+        renderLead();
       });
-      elements.endDate.addEventListener("change", () => {
-        state.filters.endDate = elements.endDate.value;
-        render();
+      elements.lead.endDate.addEventListener("change", () => {
+        state.lead.filters.endDate = elements.lead.endDate.value;
+        renderLead();
       });
-      elements.forecastDate.addEventListener("change", () => {
-        state.filters.forecastDate = elements.forecastDate.value || toInputDate(new Date());
-        render();
+      elements.lead.forecastDate.addEventListener("change", () => {
+        state.lead.filters.forecastDate = elements.lead.forecastDate.value || toInputDate(new Date());
+        renderLead();
       });
-      elements.resetFilters.addEventListener("click", resetFilters);
-      elements.restoreAll.addEventListener("click", restoreAll);
-      elements.addItem.addEventListener("click", addItem);
-      elements.recordsBody.addEventListener("click", handleTableAction);
+      elements.lead.resetFilters.addEventListener("click", resetLeadFilters);
+      elements.lead.restoreAll.addEventListener("click", restoreLeadData);
+      elements.lead.addItem.addEventListener("click", addLeadItem);
+      elements.lead.recordsBody.addEventListener("click", handleLeadTableAction);
     }
 
-    function primeDefaultPeriod() {
-      const dates = state.entries.map((entry) => entry.completionDateIso).sort();
+    function primeLeadPeriod() {
+      const dates = state.lead.entries.map((entry) => entry.completionDateIso).sort();
       if (!dates.length) {
         return;
       }
-      state.filters.startDate = dates[0];
-      state.filters.endDate = dates[dates.length - 1];
-      elements.startDate.value = state.filters.startDate;
-      elements.endDate.value = state.filters.endDate;
-      elements.forecastDate.value = state.filters.forecastDate;
+      state.lead.filters.startDate = dates[0];
+      state.lead.filters.endDate = dates[dates.length - 1];
+      elements.lead.startDate.value = state.lead.filters.startDate;
+      elements.lead.endDate.value = state.lead.filters.endDate;
+      elements.lead.forecastDate.value = state.lead.filters.forecastDate;
     }
 
-    function resetFilters() {
-      state.filters.size = "ALL";
-      primeDefaultPeriod();
-      elements.sizeFilter.value = state.filters.size;
-      elements.startDate.value = state.filters.startDate;
-      elements.endDate.value = state.filters.endDate;
-      elements.forecastDate.value = state.filters.forecastDate;
-      render();
+    function resetLeadFilters() {
+      state.lead.filters.size = "ALL";
+      primeLeadPeriod();
+      elements.lead.sizeFilter.value = state.lead.filters.size;
+      renderLead();
     }
 
-    function restoreAll() {
-      state.entries = state.entries.map((entry) => ({ ...entry, excluded: false }));
-      saveState();
-      setMessage("All excluded rows were restored.");
-      render();
+    function restoreLeadData() {
+      state.lead.entries = state.lead.entries.map((entry) => ({ ...entry, excluded: false }));
+      saveLeadState();
+      setLeadMessage("All excluded rows were restored.");
+      renderLead();
     }
 
-    function addItem() {
-      const size = elements.newSize.value;
-      const completionDateIso = elements.newDate.value;
-      const leadTime = Number(elements.newLeadTime.value);
+    function addLeadItem() {
+      const size = elements.lead.newSize.value;
+      const completionDateIso = elements.lead.newDate.value;
+      const leadTime = Number(elements.lead.newLeadTime.value);
 
       if (!size || !completionDateIso || !Number.isFinite(leadTime) || leadTime <= 0) {
-        setMessage("Provide size, completion date, and a positive lead time.");
+        setLeadMessage("Provide size, completion date, and a positive lead time.");
         return;
       }
 
-      state.entries.push({
+      state.lead.entries.push({
         id: `manual-${Date.now()}`,
         completionDateText: formatDateForDisplay(completionDateIso),
         completionDateIso,
@@ -796,53 +1052,53 @@
         source: "Manual",
         excluded: false
       });
-      hydrateEntries();
-      saveState();
-      buildSizeOptions();
-      if (!state.filters.startDate || completionDateIso < state.filters.startDate) {
-        state.filters.startDate = completionDateIso;
+      hydrateLeadEntries();
+      saveLeadState();
+      buildLeadSizeOptions();
+      if (!state.lead.filters.startDate || completionDateIso < state.lead.filters.startDate) {
+        state.lead.filters.startDate = completionDateIso;
       }
-      if (!state.filters.endDate || completionDateIso > state.filters.endDate) {
-        state.filters.endDate = completionDateIso;
+      if (!state.lead.filters.endDate || completionDateIso > state.lead.filters.endDate) {
+        state.lead.filters.endDate = completionDateIso;
       }
-      syncFilterBounds();
-      elements.newDate.value = "";
-      elements.newLeadTime.value = "";
-      setMessage("Item added to the local dashboard dataset.");
-      render();
+      syncLeadFilterBounds();
+      elements.lead.newDate.value = "";
+      elements.lead.newLeadTime.value = "";
+      setLeadMessage("Item added to the local dashboard dataset.");
+      renderLead();
     }
 
-    function syncFilterBounds() {
-      const dates = state.entries.map((entry) => entry.completionDateIso).sort();
+    function syncLeadFilterBounds() {
+      const dates = state.lead.entries.map((entry) => entry.completionDateIso).sort();
       if (!dates.length) {
         return;
       }
-      if (!state.filters.startDate || state.filters.startDate > dates[dates.length - 1]) {
-        state.filters.startDate = dates[0];
+      if (!state.lead.filters.startDate || state.lead.filters.startDate > dates[dates.length - 1]) {
+        state.lead.filters.startDate = dates[0];
       }
-      if (!state.filters.endDate || state.filters.endDate < dates[0]) {
-        state.filters.endDate = dates[dates.length - 1];
+      if (!state.lead.filters.endDate || state.lead.filters.endDate < dates[0]) {
+        state.lead.filters.endDate = dates[dates.length - 1];
       }
-      elements.startDate.value = state.filters.startDate;
-      elements.endDate.value = state.filters.endDate;
+      elements.lead.startDate.value = state.lead.filters.startDate;
+      elements.lead.endDate.value = state.lead.filters.endDate;
     }
 
-    function handleTableAction(event) {
+    function handleLeadTableAction(event) {
       const button = event.target.closest("button[data-id]");
       if (!button) {
         return;
       }
-      const entry = state.entries.find((item) => item.id === button.dataset.id);
+      const entry = state.lead.entries.find((item) => item.id === button.dataset.id);
       if (!entry) {
         return;
       }
       entry.excluded = !entry.excluded;
-      saveState();
-      render();
+      saveLeadState();
+      renderLead();
     }
 
-    function render() {
-      const filtered = getFilteredEntries();
+    function renderLead() {
+      const filtered = getFilteredLeadEntries();
       const active = filtered.filter((entry) => !entry.excluded);
       const percentiles = {
         p50: percentile(active.map((entry) => entry.leadTime), 0.5),
@@ -850,35 +1106,33 @@
         p98: percentile(active.map((entry) => entry.leadTime), 0.98)
       };
 
-      renderStats(filtered, active, percentiles);
-      renderForecasts(percentiles, active);
-      renderSelectionSummary(filtered, active);
-      renderTable(filtered);
-      renderChart(active, percentiles);
+      renderLeadStats(filtered, active, percentiles);
+      renderLeadForecasts(percentiles, active);
+      renderLeadSummary(filtered, active);
+      renderLeadTable(filtered);
+      renderLeadChart(active, percentiles);
     }
 
-    function getFilteredEntries() {
-      return state.entries.filter((entry) => {
-        const sizePass = state.filters.size === "ALL" || entry.size === state.filters.size;
-        const startPass = !state.filters.startDate || entry.completionDateIso >= state.filters.startDate;
-        const endPass = !state.filters.endDate || entry.completionDateIso <= state.filters.endDate;
+    function getFilteredLeadEntries() {
+      return state.lead.entries.filter((entry) => {
+        const sizePass = state.lead.filters.size === "ALL" || entry.size === state.lead.filters.size;
+        const startPass = !state.lead.filters.startDate || entry.completionDateIso >= state.lead.filters.startDate;
+        const endPass = !state.lead.filters.endDate || entry.completionDateIso <= state.lead.filters.endDate;
         return sizePass && startPass && endPass;
       });
     }
 
-    function renderStats(filtered, active, percentiles) {
-      const forecastBase = state.filters.forecastDate || toInputDate(new Date());
-      updateStat(elements.p50Value, elements.p50Date, percentiles.p50, forecastBase);
-      updateStat(elements.p85Value, elements.p85Date, percentiles.p85, forecastBase);
-      updateStat(elements.p98Value, elements.p98Date, percentiles.p98, forecastBase);
-
-      elements.activeCount.textContent = String(active.length);
-      const excludedCount = filtered.length - active.length;
-      elements.removedCount.textContent = `${excludedCount} excluded from ${filtered.length} filtered rows`;
-      elements.selectionPill.textContent = `${state.filters.size === "ALL" ? "All sizes" : state.filters.size} | ${active.length} active rows`;
+    function renderLeadStats(filtered, active, percentiles) {
+      const forecastBase = state.lead.filters.forecastDate || toInputDate(new Date());
+      updateLeadStat(elements.lead.p50Value, elements.lead.p50Date, percentiles.p50, forecastBase);
+      updateLeadStat(elements.lead.p85Value, elements.lead.p85Date, percentiles.p85, forecastBase);
+      updateLeadStat(elements.lead.p98Value, elements.lead.p98Date, percentiles.p98, forecastBase);
+      elements.lead.activeCount.textContent = String(active.length);
+      elements.lead.removedCount.textContent = `${filtered.length - active.length} excluded from ${filtered.length} filtered rows`;
+      elements.lead.selectionPill.textContent = `${state.lead.filters.size === "ALL" ? "All sizes" : state.lead.filters.size} | ${active.length} active rows`;
     }
 
-    function updateStat(valueNode, dateNode, days, forecastBase) {
+    function updateLeadStat(valueNode, dateNode, days, forecastBase) {
       if (days === null) {
         valueNode.textContent = "-";
         dateNode.textContent = "No active data in selection";
@@ -888,14 +1142,14 @@
       dateNode.textContent = `Forecast completion: ${formatLongDate(addDays(forecastBase, days))}`;
     }
 
-    function renderForecasts(percentiles, active) {
-      const baseDate = state.filters.forecastDate || toInputDate(new Date());
+    function renderLeadForecasts(percentiles, active) {
+      const baseDate = state.lead.filters.forecastDate || toInputDate(new Date());
       const items = [
         { label: "Median scenario", percentile: "P50", value: percentiles.p50, tone: "Balanced expectation for routine delivery." },
         { label: "Planning buffer", percentile: "P85", value: percentiles.p85, tone: "Useful when you want a stronger confidence level." },
         { label: "Near worst-case", percentile: "P98", value: percentiles.p98, tone: "Captures an aggressive risk buffer for exceptional delays." }
       ];
-      elements.forecastList.innerHTML = items.map((item) => {
+      elements.lead.forecastList.innerHTML = items.map((item) => {
         if (item.value === null) {
           return `<div class="forecast-item"><strong>${item.percentile} unavailable</strong><span>Add or restore data inside the selected period to generate this forecast.</span></div>`;
         }
@@ -903,25 +1157,21 @@
       }).join("");
     }
 
-    function renderSelectionSummary(filtered, active) {
+    function renderLeadSummary(filtered, active) {
       const leadTimes = active.map((entry) => entry.leadTime);
       const minLead = leadTimes.length ? Math.min(...leadTimes) : null;
       const maxLead = leadTimes.length ? Math.max(...leadTimes) : null;
       const dates = filtered.map((entry) => entry.completionDateIso).sort();
-      elements.selectionSummary.innerHTML = [
+      elements.lead.selectionSummary.innerHTML = [
         summaryCard("Filtered period", dates.length ? `${formatLongDate(dates[0])} to ${formatLongDate(dates[dates.length - 1])}` : "No rows in view"),
         summaryCard("Lead time range", minLead === null ? "No active rows" : `${minLead} to ${maxLead} days`),
-        summaryCard("Manual additions", `${state.entries.filter((entry) => entry.source === "Manual").length} rows`)
+        summaryCard("Manual additions", `${state.lead.entries.filter((entry) => entry.source === "Manual").length} rows`)
       ].join("");
     }
 
-    function summaryCard(title, text) {
-      return `<div class="summary-item"><strong>${title}</strong><span>${text}</span></div>`;
-    }
-
-    function renderTable(filtered) {
-      elements.tableSummary.textContent = `${filtered.length} filtered rows`;
-      elements.recordsBody.innerHTML = filtered.map((entry) => {
+    function renderLeadTable(filtered) {
+      elements.lead.tableSummary.textContent = `${filtered.length} filtered rows`;
+      elements.lead.recordsBody.innerHTML = filtered.map((entry) => {
         const actionLabel = entry.excluded ? "Restore" : "Exclude";
         const actionClass = entry.excluded ? "row-action restore" : "row-action";
         return `
@@ -937,54 +1187,366 @@
       }).join("");
     }
 
-    function renderChart(active, percentiles) {
-      const svg = elements.plot;
+    function renderLeadChart(active, percentiles) {
+      drawTimeSeriesChart({
+        svg: elements.lead.plot,
+        rows: active,
+        valueKey: "leadTime",
+        lineColor: "#0a7a6d",
+        label: "Lead time (days)",
+        pointTitle: (entry) => `${formatLongDate(entry.completionDateIso)} | ${entry.size} | ${entry.leadTime} days`,
+        horizontalLines: [
+          { value: percentiles.p50, color: "#d66853", label: "P50" },
+          { value: percentiles.p85, color: "#d7a441", label: "P85" },
+          { value: percentiles.p98, color: "#7561d0", label: "P98" }
+        ],
+        emptyMessage: "No active data for the current selection."
+      });
+    }
+
+    function initXmrTab() {
+      seedXmrWorkbook();
+      bindXmrInputs();
+      renderXmr();
+    }
+
+    function seedXmrWorkbook() {
+      state.xmr.workbookName = "Team Cycle Time for XMR.xlsx";
+      state.xmr.sheetNames = ["Dane z tabeli i dalsze opcje"];
+      state.xmr.selectedSheet = state.xmr.sheetNames[0];
+      state.xmr.sheets = {
+        [state.xmr.selectedSheet]: XMR_RAW_DATA.map((row) => ({
+          ID: row.id,
+          Started: row.started,
+          Closed: row.closed,
+          "Cycle Time": row.cycleTime
+        }))
+      };
+      refreshXmrSheetOptions();
+      refreshXmrColumnOptions();
+      syncXmrDateBounds(true);
+    }
+
+    function bindXmrInputs() {
+      elements.xmr.file.addEventListener("change", handleXmrFileSelection);
+      elements.xmr.sheet.addEventListener("change", () => {
+        state.xmr.selectedSheet = elements.xmr.sheet.value;
+        refreshXmrColumnOptions();
+        renderXmr();
+      });
+      elements.xmr.dateColumn.addEventListener("change", () => {
+        state.xmr.dateColumn = elements.xmr.dateColumn.value;
+        syncXmrDateBounds(true);
+        renderXmr();
+      });
+      elements.xmr.cycleColumn.addEventListener("change", () => {
+        state.xmr.cycleColumn = elements.xmr.cycleColumn.value;
+        syncXmrDateBounds(true);
+        renderXmr();
+      });
+      elements.xmr.startDate.addEventListener("change", () => {
+        state.xmr.startDate = elements.xmr.startDate.value;
+        renderXmr();
+      });
+      elements.xmr.endDate.addEventListener("change", () => {
+        state.xmr.endDate = elements.xmr.endDate.value;
+        renderXmr();
+      });
+      elements.xmr.reset.addEventListener("click", () => {
+        syncXmrDateBounds(true);
+        renderXmr();
+      });
+    }
+
+    async function handleXmrFileSelection(event) {
+      const [file] = event.target.files || [];
+      if (!file) {
+        return;
+      }
+      if (!window.XLSX) {
+        setXmrMessage("The Excel parser failed to load. Check network access, then reload the page.");
+        return;
+      }
+
+      try {
+        const buffer = await file.arrayBuffer();
+        const workbook = XLSX.read(buffer, { type: "array", cellDates: true });
+        state.xmr.workbookName = file.name;
+        state.xmr.sheetNames = workbook.SheetNames.slice();
+        state.xmr.sheets = Object.fromEntries(workbook.SheetNames.map((sheetName) => {
+          const sheet = workbook.Sheets[sheetName];
+          const rows = XLSX.utils.sheet_to_json(sheet, { defval: "", raw: false });
+          return [sheetName, rows];
+        }));
+        state.xmr.selectedSheet = workbook.SheetNames[0] || "";
+        refreshXmrSheetOptions();
+        refreshXmrColumnOptions();
+        syncXmrDateBounds(true);
+        setXmrMessage(`Loaded ${file.name}.`);
+        renderXmr();
+      } catch (error) {
+        setXmrMessage(`Could not read workbook: ${error.message}`);
+      }
+    }
+
+    function refreshXmrSheetOptions() {
+      elements.xmr.sheet.innerHTML = state.xmr.sheetNames.map((sheetName) => `<option value="${sheetName}">${sheetName}</option>`).join("");
+      elements.xmr.sheet.disabled = state.xmr.sheetNames.length === 0;
+      elements.xmr.sheet.value = state.xmr.selectedSheet;
+    }
+
+    function refreshXmrColumnOptions() {
+      const rows = getActiveXmrSheetRows();
+      const headers = rows.length ? Object.keys(rows[0]) : [];
+      state.xmr.headers = headers;
+      const dateGuess = detectXmrColumn(headers, ["date", "completion", "done", "closed", "resolved", "finished"]);
+      const cycleGuess = detectXmrColumn(headers, ["cycle time", "cycletime", "ct", "days", "age"]);
+      state.xmr.dateColumn = headers.includes(state.xmr.dateColumn) ? state.xmr.dateColumn : (dateGuess || headers[0] || "");
+      state.xmr.cycleColumn = headers.includes(state.xmr.cycleColumn) ? state.xmr.cycleColumn : (cycleGuess || headers.find((header) => header !== state.xmr.dateColumn) || headers[0] || "");
+      const options = headers.map((header) => `<option value="${header}">${header}</option>`).join("");
+      elements.xmr.dateColumn.innerHTML = options;
+      elements.xmr.cycleColumn.innerHTML = options;
+      elements.xmr.dateColumn.disabled = headers.length === 0;
+      elements.xmr.cycleColumn.disabled = headers.length === 0;
+      elements.xmr.dateColumn.value = state.xmr.dateColumn;
+      elements.xmr.cycleColumn.value = state.xmr.cycleColumn;
+    }
+
+    function detectXmrColumn(headers, candidates) {
+      return headers.find((header) => {
+        const normalized = normalizeHeader(header);
+        return candidates.some((candidate) => normalized.includes(candidate));
+      }) || "";
+    }
+
+    function syncXmrDateBounds(forceReset) {
+      const rows = getParsedXmrRows();
+      if (!rows.length) {
+        state.xmr.startDate = "";
+        state.xmr.endDate = "";
+        elements.xmr.startDate.value = "";
+        elements.xmr.endDate.value = "";
+        elements.xmr.startDate.disabled = true;
+        elements.xmr.endDate.disabled = true;
+        elements.xmr.reset.disabled = true;
+        return;
+      }
+
+      const dates = rows.map((row) => row.dateIso).sort();
+      if (forceReset || !state.xmr.startDate || state.xmr.startDate < dates[0] || state.xmr.startDate > dates[dates.length - 1]) {
+        state.xmr.startDate = dates[0];
+      }
+      if (forceReset || !state.xmr.endDate || state.xmr.endDate > dates[dates.length - 1] || state.xmr.endDate < dates[0]) {
+        state.xmr.endDate = dates[dates.length - 1];
+      }
+      elements.xmr.startDate.disabled = false;
+      elements.xmr.endDate.disabled = false;
+      elements.xmr.reset.disabled = false;
+      elements.xmr.startDate.value = state.xmr.startDate;
+      elements.xmr.endDate.value = state.xmr.endDate;
+    }
+
+    function getActiveXmrSheetRows() {
+      return state.xmr.sheets[state.xmr.selectedSheet] || [];
+    }
+
+    function getParsedXmrRows() {
+      const rows = getActiveXmrSheetRows();
+      if (!rows.length || !state.xmr.dateColumn || !state.xmr.cycleColumn) {
+        return [];
+      }
+
+      return rows.map((row, index) => {
+        const dateIso = parseFlexibleDate(row[state.xmr.dateColumn]);
+        const cycleTime = parseFlexibleNumber(row[state.xmr.cycleColumn]);
+        return {
+          index: index + 2,
+          dateIso,
+          cycleTime
+        };
+      }).filter((row) => row.dateIso && Number.isFinite(row.cycleTime))
+        .sort((left, right) => left.dateIso.localeCompare(right.dateIso));
+    }
+
+    function getFilteredXmrRows() {
+      return getParsedXmrRows().filter((row) => {
+        const startPass = !state.xmr.startDate || row.dateIso >= state.xmr.startDate;
+        const endPass = !state.xmr.endDate || row.dateIso <= state.xmr.endDate;
+        return startPass && endPass;
+      });
+    }
+
+    function renderXmr() {
+      const parsedRows = getParsedXmrRows();
+      const filteredRows = getFilteredXmrRows();
+      const median = percentile(filteredRows.map((row) => row.cycleTime), 0.5);
+      const average = filteredRows.length ? Math.round((filteredRows.reduce((sum, row) => sum + row.cycleTime, 0) / filteredRows.length) * 10) / 10 : null;
+      const minCt = filteredRows.length ? Math.min(...filteredRows.map((row) => row.cycleTime)) : null;
+      const maxCt = filteredRows.length ? Math.max(...filteredRows.map((row) => row.cycleTime)) : null;
+
+      elements.xmr.median.textContent = median === null ? "-" : `${median} d`;
+      elements.xmr.medianSub.textContent = median === null ? "Awaiting parsed rows" : `Center line based on ${filteredRows.length} visible rows`;
+      elements.xmr.average.textContent = average === null ? "-" : `${average} d`;
+      elements.xmr.averageSub.textContent = average === null ? "Awaiting parsed rows" : "Arithmetic mean for the current period";
+      elements.xmr.count.textContent = parsedRows.length ? String(filteredRows.length) : "-";
+      elements.xmr.countSub.textContent = parsedRows.length ? `${parsedRows.length} parsed from ${state.xmr.workbookName || "workbook"}` : "No data loaded";
+      elements.xmr.range.textContent = minCt === null ? "-" : `${minCt}-${maxCt}`;
+      elements.xmr.rangeSub.textContent = minCt === null ? "No parsed cycle times" : "Minimum to maximum cycle time in days";
+      elements.xmr.selectionPill.textContent = filteredRows.length ? `${state.xmr.selectedSheet} | ${filteredRows.length} visible points` : (state.xmr.workbookName ? "Adjust columns or period" : "Load workbook to begin");
+
+      renderXmrSummary(parsedRows, filteredRows);
+      renderXmrTable(filteredRows);
+      renderXmrChart(filteredRows, median);
+    }
+
+    function renderXmrSummary(parsedRows, filteredRows) {
+      if (!state.xmr.workbookName) {
+        elements.xmr.summary.innerHTML = `<div class="summary-item"><strong>No file loaded</strong><span>Choose the Team Cycle Time for XMR workbook to populate this tab.</span></div>`;
+        return;
+      }
+
+      if (!parsedRows.length) {
+        elements.xmr.summary.innerHTML = `<div class="summary-item"><strong>No usable rows found</strong><span>Pick different date and cycle time columns if the automatic match missed your workbook schema.</span></div>`;
+        return;
+      }
+
+      const dates = filteredRows.map((row) => row.dateIso).sort();
+      elements.xmr.summary.innerHTML = [
+        summaryCard("Workbook", `${state.xmr.workbookName}${state.xmr.selectedSheet ? ` | ${state.xmr.selectedSheet}` : ""}`),
+        summaryCard("Mapped columns", `${state.xmr.dateColumn} and ${state.xmr.cycleColumn}`),
+        summaryCard("Visible period", dates.length ? `${formatLongDate(dates[0])} to ${formatLongDate(dates[dates.length - 1])}` : "No rows in range")
+      ].join("");
+    }
+
+    function renderXmrTable(filteredRows) {
+      elements.xmr.tableSummary.textContent = `${filteredRows.length} visible rows`;
+      elements.xmr.body.innerHTML = filteredRows.length ? filteredRows.map((row, index) => `
+        <tr>
+          <td>${index + 1}</td>
+          <td>${formatLongDate(row.dateIso)}</td>
+          <td>${row.cycleTime} days</td>
+          <td>${row.index}</td>
+        </tr>
+      `).join("") : `<tr><td colspan="4"><div class="empty-state">No parsed XMR rows for the current sheet, column mapping, and date range.</div></td></tr>`;
+    }
+
+    function renderXmrChart(filteredRows, median) {
+      const chartRows = filteredRows.map((row, index) => ({
+        completionDateIso: row.dateIso,
+        cycleTime: row.cycleTime,
+        labelIndex: index + 1
+      }));
+
+      drawSequenceChart({
+        svg: elements.xmr.plot,
+        rows: chartRows,
+        valueKey: "cycleTime",
+        lineColor: "#0a7a6d",
+        label: "Cycle time (days)",
+        pointTitle: (row) => `#${row.labelIndex} | ${formatLongDate(row.completionDateIso)} | ${row.cycleTime} days`,
+        horizontalLines: [
+          { value: median, color: "#d66853", label: "Median" }
+        ],
+        tickLabel: (row, index) => {
+          if (!chartRows.length) {
+            return "";
+          }
+          const step = Math.max(1, Math.floor(chartRows.length / 6));
+          return index === 0 || index === chartRows.length - 1 || index % step === 0 ? shortDate(row.completionDateIso) : "";
+        },
+        emptyMessage: state.xmr.workbookName ? "No visible XMR data for the current mapping and period." : "Load the Team Cycle Time for XMR workbook to render the run chart."
+      });
+    }
+
+    function drawTimeSeriesChart(config) {
+      const rows = config.rows || [];
+      const datedRows = rows.map((row) => ({
+        ...row,
+        __timestamp: parseIsoDate(row.completionDateIso).getTime()
+      }));
+      renderSvgChart({
+        svg: config.svg,
+        rows: datedRows,
+        valueKey: config.valueKey,
+        lineColor: config.lineColor,
+        label: config.label,
+        pointTitle: config.pointTitle,
+        horizontalLines: config.horizontalLines,
+        emptyMessage: config.emptyMessage,
+        xPosition: (row, dimensions, bounds) => dimensions.padding.left + ((row.__timestamp - bounds.minX) / bounds.spanX) * dimensions.innerWidth,
+        xBounds: datedRows.length ? {
+          minX: Math.min(...datedRows.map((row) => row.__timestamp)),
+          maxX: Math.max(...datedRows.map((row) => row.__timestamp))
+        } : null,
+        xLabels: datedRows.filter((_, index) => index === 0 || index === datedRows.length - 1 || index % Math.max(1, Math.floor(datedRows.length / 5)) === 0)
+          .map((row) => ({
+            row,
+            text: shortDate(row.completionDateIso)
+          }))
+      });
+    }
+
+    function drawSequenceChart(config) {
+      renderSvgChart({
+        svg: config.svg,
+        rows: config.rows || [],
+        valueKey: config.valueKey,
+        lineColor: config.lineColor,
+        label: config.label,
+        pointTitle: config.pointTitle,
+        horizontalLines: config.horizontalLines,
+        emptyMessage: config.emptyMessage,
+        xPosition: (row, dimensions, bounds, index) => dimensions.padding.left + (index / bounds.maxIndex) * dimensions.innerWidth,
+        xBounds: config.rows && config.rows.length ? { minX: 0, maxX: config.rows.length - 1 } : null,
+        xLabels: (config.rows || []).map((row, index) => ({ row, text: config.tickLabel(row, index), index })).filter((item) => item.text)
+      });
+    }
+
+    function renderSvgChart(config) {
+      const svg = config.svg;
+      const rows = config.rows;
       const width = 960;
       const height = 420;
       const padding = { top: 24, right: 24, bottom: 60, left: 64 };
       const innerWidth = width - padding.left - padding.right;
       const innerHeight = height - padding.top - padding.bottom;
-      const allDates = active.map((entry) => parseIsoDate(entry.completionDateIso).getTime());
-      const allLeadTimes = active.map((entry) => entry.leadTime);
+      const values = rows.map((row) => Number(row[config.valueKey])).filter(Number.isFinite);
 
-      if (!active.length) {
-        svg.innerHTML = `<rect x="0" y="0" width="${width}" height="${height}" fill="transparent"></rect><text x="50%" y="50%" text-anchor="middle" fill="#5f6b73" font-size="20">No active data for the current selection.</text>`;
+      if (!rows.length || !values.length) {
+        svg.innerHTML = `<rect x="0" y="0" width="${width}" height="${height}" fill="transparent"></rect><text x="50%" y="50%" text-anchor="middle" fill="#5f6b73" font-size="20">${config.emptyMessage}</text>`;
         return;
       }
 
-      const minDate = Math.min(...allDates);
-      const maxDate = Math.max(...allDates);
-      const maxLead = Math.max(...allLeadTimes, percentiles.p98 || 0);
-      const safeDateSpan = Math.max(maxDate - minDate, 24 * 60 * 60 * 1000);
-      const safeLeadMax = Math.max(maxLead, 10);
-
-      const xScale = (timestamp) => padding.left + ((timestamp - minDate) / safeDateSpan) * innerWidth;
-      const yScale = (value) => padding.top + innerHeight - (value / safeLeadMax) * innerHeight;
+      const bounds = config.xBounds;
+      const spanX = Math.max((bounds.maxX - bounds.minX) || 0, 1);
+      const maxValue = Math.max(...values, ...(config.horizontalLines || []).map((line) => line.value || 0), 10);
+      const yScale = (value) => padding.top + innerHeight - (value / maxValue) * innerHeight;
+      const xScale = (row, index) => config.xPosition(row, { padding, innerWidth, innerHeight }, { ...bounds, spanX, maxIndex: Math.max(rows.length - 1, 1) }, index);
 
       const grid = [];
       for (let step = 0; step <= 4; step += 1) {
-        const yValue = Math.round((safeLeadMax / 4) * step);
+        const yValue = Math.round((maxValue / 4) * step);
         const y = yScale(yValue);
         grid.push(`<line x1="${padding.left}" y1="${y}" x2="${width - padding.right}" y2="${y}" stroke="rgba(31,42,51,0.12)" stroke-dasharray="4 6" />`);
         grid.push(`<text x="${padding.left - 12}" y="${y + 5}" text-anchor="end" fill="#5f6b73" font-size="12">${yValue}</text>`);
       }
 
-      const xTicks = active.filter((_, index) => index === 0 || index === active.length - 1 || index % Math.max(1, Math.floor(active.length / 5)) === 0);
-      const xLabels = xTicks.map((entry) => {
-        const x = xScale(parseIsoDate(entry.completionDateIso).getTime());
-        return `<text x="${x}" y="${height - 20}" text-anchor="middle" fill="#5f6b73" font-size="12">${shortDate(entry.completionDateIso)}</text>`;
-      });
-
-      const lines = [
-        percentileLine(percentiles.p50, "var(--accent-2)", "P50"),
-        percentileLine(percentiles.p85, "var(--accent-3)", "P85"),
-        percentileLine(percentiles.p98, "#7561d0", "P98")
-      ].join("");
-
-      const points = active.map((entry) => {
-        const x = xScale(Date.parse(entry.completionDateIso));
-        const y = yScale(entry.leadTime);
-        return `<g><circle cx="${x}" cy="${y}" r="6" fill="#0a7a6d" opacity="0.9"></circle><title>${formatLongDate(entry.completionDateIso)} | ${entry.size} | ${entry.leadTime} days</title></g>`;
+      const path = rows.map((row, index) => `${index === 0 ? "M" : "L"}${xScale(row, index)} ${yScale(Number(row[config.valueKey]))}`).join(" ");
+      const points = rows.map((row, index) => {
+        const x = xScale(row, index);
+        const y = yScale(Number(row[config.valueKey]));
+        return `<g><circle cx="${x}" cy="${y}" r="5.5" fill="${config.lineColor}" opacity="0.92"></circle><title>${config.pointTitle(row, index)}</title></g>`;
+      }).join("");
+      const labels = (config.xLabels || []).map((item) => {
+        const index = typeof item.index === "number" ? item.index : rows.indexOf(item.row);
+        return `<text x="${xScale(item.row, index)}" y="${height - 20}" text-anchor="middle" fill="#5f6b73" font-size="12">${item.text}</text>`;
+      }).join("");
+      const lines = (config.horizontalLines || []).filter((line) => line.value !== null && line.value !== undefined).map((line) => {
+        const y = yScale(line.value);
+        return `
+          <line x1="${padding.left}" y1="${y}" x2="${width - padding.right}" y2="${y}" stroke="${line.color}" stroke-width="2.5" stroke-dasharray="10 6" />
+          <text x="${width - padding.right}" y="${y - 8}" text-anchor="end" fill="${line.color}" font-size="12">${line.label}: ${line.value}d</text>
+        `;
       }).join("");
 
       svg.innerHTML = `
@@ -993,21 +1555,11 @@
         <line x1="${padding.left}" y1="${height - padding.bottom}" x2="${width - padding.right}" y2="${height - padding.bottom}" stroke="rgba(31,42,51,0.18)" />
         <line x1="${padding.left}" y1="${padding.top}" x2="${padding.left}" y2="${height - padding.bottom}" stroke="rgba(31,42,51,0.18)" />
         ${lines}
+        <path d="${path}" fill="none" stroke="${config.lineColor}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.7"></path>
         ${points}
-        ${xLabels.join("")}
-        <text x="${padding.left}" y="${padding.top - 8}" fill="#5f6b73" font-size="12">Lead time (days)</text>
+        ${labels}
+        <text x="${padding.left}" y="${padding.top - 8}" fill="#5f6b73" font-size="12">${config.label}</text>
       `;
-
-      function percentileLine(value, color, label) {
-        if (value === null) {
-          return "";
-        }
-        const y = yScale(value);
-        return `
-          <line x1="${padding.left}" y1="${y}" x2="${width - padding.right}" y2="${y}" stroke="${color}" stroke-width="2.5" stroke-dasharray="10 6" />
-          <text x="${width - padding.right}" y="${y - 8}" text-anchor="end" fill="${color}" font-size="12">${label}: ${value}d</text>
-        `;
-      }
     }
 
     function percentile(values, ratio) {
@@ -1033,11 +1585,50 @@
       return toInputDate(new Date(year, month, day));
     }
 
+    function parseFlexibleDate(value) {
+      if (value instanceof Date && !Number.isNaN(value.getTime())) {
+        return toInputDate(value);
+      }
+      if (typeof value === "number" && Number.isFinite(value)) {
+        const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+        excelEpoch.setUTCDate(excelEpoch.getUTCDate() + value);
+        return toInputDate(new Date(excelEpoch.getUTCFullYear(), excelEpoch.getUTCMonth(), excelEpoch.getUTCDate()));
+      }
+      const text = String(value || "").trim();
+      if (!text) {
+        return "";
+      }
+      const dottedMatch = text.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+      if (dottedMatch) {
+        const month = Number(dottedMatch[1]);
+        const day = Number(dottedMatch[2]);
+        const year = Number(dottedMatch[3]);
+        return toInputDate(new Date(year, month - 1, day));
+      }
+      if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
+        return text;
+      }
+      const parsed = new Date(text);
+      if (!Number.isNaN(parsed.getTime())) {
+        return toInputDate(parsed);
+      }
+      return parsePolishDate(text);
+    }
+
+    function parseFlexibleNumber(value) {
+      if (typeof value === "number") {
+        return Number.isFinite(value) ? value : NaN;
+      }
+      const normalized = String(value || "").replace(/,/g, ".").replace(/[^0-9.-]/g, "").trim();
+      return normalized ? Number(normalized) : NaN;
+    }
+
     function normalizeMonth(month) {
-      return month
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "");
+      return month.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    }
+
+    function normalizeHeader(header) {
+      return String(header || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
     }
 
     function toInputDate(date) {
@@ -1054,6 +1645,11 @@
       return toInputDate(date);
     }
 
+    function parseIsoDate(isoDate) {
+      const [year, month, day] = String(isoDate).split("-").map(Number);
+      return new Date(year, month - 1, day);
+    }
+
     function formatLongDate(isoDate) {
       if (!isoDate) {
         return "-";
@@ -1065,10 +1661,6 @@
       });
     }
 
-    function formatDateForDisplay(isoDate) {
-      return formatLongDate(isoDate);
-    }
-
     function shortDate(isoDate) {
       return parseIsoDate(isoDate).toLocaleDateString("en-GB", {
         month: "short",
@@ -1076,16 +1668,27 @@
       });
     }
 
-    function parseIsoDate(isoDate) {
-      const [year, month, day] = String(isoDate).split("-").map(Number);
-      return new Date(year, month - 1, day);
+    function formatDateForDisplay(isoDate) {
+      return formatLongDate(isoDate);
     }
 
-    function setMessage(text) {
-      elements.formMessage.textContent = text;
-      window.clearTimeout(setMessage.timeoutId);
-      setMessage.timeoutId = window.setTimeout(() => {
-        elements.formMessage.textContent = "";
+    function summaryCard(title, text) {
+      return `<div class="summary-item"><strong>${title}</strong><span>${text}</span></div>`;
+    }
+
+    function setLeadMessage(text) {
+      setTimedMessage(elements.lead.message, text);
+    }
+
+    function setXmrMessage(text) {
+      setTimedMessage(elements.xmr.message, text);
+    }
+
+    function setTimedMessage(node, text) {
+      node.textContent = text;
+      window.clearTimeout(node._timeoutId);
+      node._timeoutId = window.setTimeout(() => {
+        node.textContent = "";
       }, 3200);
     }
   </script>
