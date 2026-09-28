@@ -1,0 +1,1241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jira Lead Time Histogram</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5efe4;
+      --surface: rgba(255, 252, 247, 0.88);
+      --surface-strong: #fffaf1;
+      --ink: #1f2a33;
+      --muted: #5f6b73;
+      --line: rgba(31, 42, 51, 0.12);
+      --accent: #0a7a6d;
+      --accent-soft: rgba(10, 122, 109, 0.12);
+      --accent-2: #d66853;
+      --accent-3: #d7a441;
+      --accent-4: #7561d0;
+      --shadow: 0 24px 60px rgba(31, 42, 51, 0.12);
+      --radius: 22px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", "Trebuchet MS", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(214, 104, 83, 0.16), transparent 28%),
+        radial-gradient(circle at right 20%, rgba(10, 122, 109, 0.14), transparent 34%),
+        linear-gradient(180deg, #f9f4eb 0%, var(--bg) 55%, #ece5d8 100%);
+    }
+
+    .shell {
+      max-width: 1380px;
+      margin: 0 auto;
+      padding: 28px;
+    }
+
+    .hero {
+      display: grid;
+      gap: 18px;
+      margin-bottom: 24px;
+      padding: 28px;
+      border: 1px solid rgba(255, 255, 255, 0.65);
+      border-radius: 30px;
+      background: linear-gradient(140deg, rgba(255, 250, 241, 0.92), rgba(248, 241, 232, 0.8));
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: auto -60px -80px auto;
+      width: 240px;
+      height: 240px;
+      border-radius: 50%;
+      background: rgba(10, 122, 109, 0.08);
+    }
+
+    .eyebrow {
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      font-size: 0.78rem;
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(2rem, 4vw, 3.3rem);
+      line-height: 1.05;
+      max-width: 12ch;
+    }
+
+    .hero p,
+    .note,
+    .muted,
+    .message {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+      line-height: 1.6;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(300px, 370px) minmax(0, 1fr);
+      gap: 22px;
+      align-items: start;
+    }
+
+    .panel {
+      border: 1px solid rgba(255, 255, 255, 0.72);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+    }
+
+    .sidebar {
+      padding: 20px;
+      position: sticky;
+      top: 20px;
+    }
+
+    .content-card,
+    .stat-card {
+      padding: 20px;
+    }
+
+    .stack,
+    .main,
+    .summary-list,
+    .field-grid,
+    .legend,
+    .callout {
+      display: grid;
+      gap: 12px;
+    }
+
+    .main {
+      gap: 22px;
+    }
+
+    .section-title {
+      margin: 0 0 14px;
+      font-size: 1rem;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      font-size: 0.88rem;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    input,
+    button {
+      font: inherit;
+    }
+
+    input {
+      width: 100%;
+      padding: 11px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(31, 42, 51, 0.14);
+      background: rgba(255, 255, 255, 0.95);
+      color: var(--ink);
+    }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 999px;
+      padding: 10px 16px;
+      cursor: pointer;
+      transition: transform 140ms ease, opacity 140ms ease, box-shadow 140ms ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 24px rgba(31, 42, 51, 0.12);
+    }
+
+    button:disabled {
+      cursor: wait;
+      opacity: 0.75;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .primary {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .secondary {
+      background: rgba(31, 42, 51, 0.08);
+      color: var(--ink);
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .stat-card {
+      min-height: 120px;
+      display: grid;
+      align-content: start;
+      gap: 10px;
+    }
+
+    .stat-card .label {
+      font-size: 0.85rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 700;
+    }
+
+    .stat-card .value {
+      font-size: clamp(1.7rem, 3vw, 2.5rem);
+      font-weight: 800;
+    }
+
+    .summary-item {
+      padding: 14px 16px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid rgba(31, 42, 51, 0.08);
+    }
+
+    .summary-item strong {
+      display: block;
+      font-size: 1rem;
+      margin-bottom: 4px;
+    }
+
+    .callout {
+      padding: 14px 16px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid rgba(31, 42, 51, 0.08);
+    }
+
+    .callout strong {
+      color: var(--ink);
+    }
+
+    .legend {
+      grid-auto-flow: column;
+      justify-content: start;
+      grid-template-columns: repeat(auto-fit, minmax(160px, max-content));
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .legend-swatch {
+      width: 16px;
+      height: 3px;
+      border-radius: 999px;
+    }
+
+    .plot {
+      width: 100%;
+      min-height: 420px;
+      border-radius: 18px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.76), rgba(255,255,255,0.94));
+      border: 1px solid rgba(31, 42, 51, 0.08);
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 0.82rem;
+      font-weight: 700;
+    }
+
+    .table-wrap {
+      overflow: auto;
+      border-radius: 16px;
+      border: 1px solid rgba(31, 42, 51, 0.08);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 760px;
+      background: rgba(255, 255, 255, 0.92);
+    }
+
+    th,
+    td {
+      padding: 12px 14px;
+      text-align: left;
+      border-bottom: 1px solid rgba(31, 42, 51, 0.08);
+      font-size: 0.94rem;
+    }
+
+    th {
+      color: var(--muted);
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      background: rgba(245, 239, 228, 0.82);
+      position: sticky;
+      top: 0;
+    }
+
+    .empty-state {
+      padding: 30px 16px;
+      text-align: center;
+      color: var(--muted);
+      border: 1px dashed rgba(31, 42, 51, 0.18);
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.5);
+    }
+
+    @media (max-width: 1080px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        position: static;
+      }
+
+      .stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 720px) {
+      .shell {
+        padding: 16px;
+      }
+
+      .hero,
+      .sidebar,
+      .content-card,
+      .stat-card {
+        padding: 16px;
+      }
+
+      .stats {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <section class="hero">
+      <div class="eyebrow">Jira Cloud</div>
+      <h1>Lead time histogram for your Jira project.</h1>
+      <p>
+        Connect to Jira Cloud, pull resolved issues from project MS, and visualize the distribution of lead times
+        from issue creation to resolution as a histogram with percentile guides.
+      </p>
+    </section>
+
+    <div class="layout">
+      <aside class="panel sidebar">
+        <div class="stack">
+          <section>
+            <h2 class="section-title">Connection</h2>
+            <div class="field-grid">
+              <label>
+                Jira base URL
+                <input id="jiraBaseUrl" type="url" value="https://leanagileninja.atlassian.net/" autocomplete="off">
+              </label>
+              <label>
+                Local proxy URL
+                <input id="jiraProxyUrl" type="url" value="http://127.0.0.1:8787" autocomplete="off">
+              </label>
+              <label>
+                Atlassian email
+                <input id="jiraEmail" type="email" placeholder="name@example.com" autocomplete="username">
+              </label>
+              <label>
+                API token
+                <input id="jiraToken" type="password" placeholder="Paste token for this session only" autocomplete="current-password">
+              </label>
+              <label>
+                Project key
+                <input id="jiraProjectKey" type="text" value="MS" autocomplete="off">
+              </label>
+              <label>
+                Visible projects
+                <select id="jiraProjectSelect">
+                  <option value="">Discover projects after authentication</option>
+                </select>
+              </label>
+            </div>
+            <div class="button-row" style="margin-top: 12px;">
+              <button class="secondary" id="discoverProjectsButton" type="button">Discover projects</button>
+              <button class="primary" id="loadJiraButton" type="button">Load Jira data</button>
+              <button class="secondary" id="clearJiraButton" type="button">Clear session</button>
+            </div>
+            <p class="message" id="jiraMessage">This page does not save the API token to disk.</p>
+          </section>
+
+          <section>
+            <h2 class="section-title">Filters</h2>
+            <div class="field-grid">
+              <label>
+                Resolved from
+                <input id="filterStartDate" type="date">
+              </label>
+              <label>
+                Resolved to
+                <input id="filterEndDate" type="date">
+              </label>
+            </div>
+            <div class="button-row" style="margin-top: 12px;">
+              <button class="secondary" id="resetFilters" type="button">Reset filters</button>
+            </div>
+          </section>
+
+          <section>
+            <h2 class="section-title">Selection snapshot</h2>
+            <div class="summary-list" id="selectionSummary"></div>
+          </section>
+
+          <section>
+            <div class="callout">
+              <strong>Important:</strong>
+              <span>
+                Jira Cloud API access with an API token also requires your Atlassian account email. If the browser reports
+                a fetch failure, the likely cause is Jira CORS policy on direct browser calls from a local file.
+              </span>
+            </div>
+          </section>
+        </div>
+      </aside>
+
+      <main class="main">
+        <section class="stats">
+          <article class="panel stat-card">
+            <div class="label">Median Lead Time</div>
+            <div class="value" id="p50Value">-</div>
+            <div class="muted" id="p50Sub">Load Jira issues</div>
+          </article>
+          <article class="panel stat-card">
+            <div class="label">P85 Lead Time</div>
+            <div class="value" id="p85Value">-</div>
+            <div class="muted" id="p85Sub">Load Jira issues</div>
+          </article>
+          <article class="panel stat-card">
+            <div class="label">P98 Lead Time</div>
+            <div class="value" id="p98Value">-</div>
+            <div class="muted" id="p98Sub">Load Jira issues</div>
+          </article>
+          <article class="panel stat-card">
+            <div class="label">Active Dataset</div>
+            <div class="value" id="activeCount">0</div>
+            <div class="muted" id="activeSub">No issues loaded</div>
+          </article>
+        </section>
+
+        <section class="panel content-card">
+          <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start; flex-wrap:wrap;">
+            <div>
+              <h2 class="section-title" style="margin-bottom:6px;">Lead time histogram</h2>
+              <div class="note">Bars show how many resolved issues fall into each lead-time bucket. Vertical markers show P50, P85, and P98.</div>
+            </div>
+            <div class="pill" id="selectionPill">Awaiting Jira data</div>
+          </div>
+          <div class="legend">
+            <span class="legend-item"><span class="legend-swatch" style="background: var(--accent);"></span>Histogram bins</span>
+            <span class="legend-item"><span class="legend-swatch" style="background: var(--accent-2);"></span>P50</span>
+            <span class="legend-item"><span class="legend-swatch" style="background: var(--accent-3);"></span>P85</span>
+            <span class="legend-item"><span class="legend-swatch" style="background: var(--accent-4);"></span>P98</span>
+          </div>
+          <svg class="plot" id="histogramPlot" viewBox="0 0 960 420" preserveAspectRatio="xMidYMid meet" aria-label="Jira lead time histogram"></svg>
+        </section>
+
+        <section class="panel content-card">
+          <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start; flex-wrap:wrap; margin-bottom:14px;">
+            <div>
+              <h2 class="section-title" style="margin-bottom:6px;">Resolved issues</h2>
+              <div class="note">Lead time is measured from issue creation timestamp to resolution timestamp.</div>
+            </div>
+            <div class="pill" id="tableSummary">0 rows</div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Key</th>
+                  <th>Summary</th>
+                  <th>Created</th>
+                  <th>Resolved</th>
+                  <th>Lead Time</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="recordsBody"></tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = "jira-histogram-preferences";
+    const state = {
+      issues: [],
+      hasLoaded: false,
+      filters: {
+        startDate: "",
+        endDate: ""
+      },
+      connection: {
+        proxyUrl: "http://127.0.0.1:8787",
+        baseUrl: "https://leanagileninja.atlassian.net/",
+        email: "",
+        projectKey: "MS"
+      },
+      projects: []
+    };
+
+    const elements = {
+      proxyUrl: document.getElementById("jiraProxyUrl"),
+      baseUrl: document.getElementById("jiraBaseUrl"),
+      email: document.getElementById("jiraEmail"),
+      token: document.getElementById("jiraToken"),
+      projectKey: document.getElementById("jiraProjectKey"),
+      projectSelect: document.getElementById("jiraProjectSelect"),
+      discoverProjectsButton: document.getElementById("discoverProjectsButton"),
+      loadButton: document.getElementById("loadJiraButton"),
+      clearButton: document.getElementById("clearJiraButton"),
+      message: document.getElementById("jiraMessage"),
+      filterStartDate: document.getElementById("filterStartDate"),
+      filterEndDate: document.getElementById("filterEndDate"),
+      resetFilters: document.getElementById("resetFilters"),
+      selectionSummary: document.getElementById("selectionSummary"),
+      p50Value: document.getElementById("p50Value"),
+      p50Sub: document.getElementById("p50Sub"),
+      p85Value: document.getElementById("p85Value"),
+      p85Sub: document.getElementById("p85Sub"),
+      p98Value: document.getElementById("p98Value"),
+      p98Sub: document.getElementById("p98Sub"),
+      activeCount: document.getElementById("activeCount"),
+      activeSub: document.getElementById("activeSub"),
+      selectionPill: document.getElementById("selectionPill"),
+      histogramPlot: document.getElementById("histogramPlot"),
+      tableSummary: document.getElementById("tableSummary"),
+      recordsBody: document.getElementById("recordsBody")
+    };
+
+    init();
+
+    function init() {
+      loadPreferences();
+      bindInputs();
+      render();
+    }
+
+    function bindInputs() {
+      elements.proxyUrl.addEventListener("input", persistConnectionFields);
+      elements.baseUrl.addEventListener("input", persistConnectionFields);
+      elements.email.addEventListener("input", persistConnectionFields);
+      elements.projectKey.addEventListener("input", persistConnectionFields);
+      elements.projectSelect.addEventListener("change", () => {
+        const selected = state.projects.find((project) => project.key === elements.projectSelect.value);
+        if (!selected) {
+          return;
+        }
+        state.connection.projectKey = selected.key;
+        elements.projectKey.value = selected.key;
+        persistConnectionFields();
+        setMessage(`Selected project ${selected.key} (${selected.name}).`);
+      });
+      elements.filterStartDate.addEventListener("change", () => {
+        state.filters.startDate = elements.filterStartDate.value;
+        render();
+      });
+      elements.filterEndDate.addEventListener("change", () => {
+        state.filters.endDate = elements.filterEndDate.value;
+        render();
+      });
+      elements.resetFilters.addEventListener("click", () => {
+        primeFilterBounds();
+        render();
+      });
+      elements.clearButton.addEventListener("click", clearSession);
+      elements.discoverProjectsButton.addEventListener("click", discoverProjects);
+      elements.loadButton.addEventListener("click", loadJiraData);
+    }
+
+    function loadPreferences() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) {
+          primeConnectionFields();
+          return;
+        }
+        const parsed = JSON.parse(raw);
+        state.connection.proxyUrl = normalizeProxyUrl(parsed.proxyUrl || state.connection.proxyUrl);
+        state.connection.baseUrl = normalizeBaseUrl(parsed.baseUrl || state.connection.baseUrl);
+        state.connection.email = parsed.email || "";
+        state.connection.projectKey = (parsed.projectKey || state.connection.projectKey).toUpperCase();
+      } catch (_error) {
+      }
+      primeConnectionFields();
+    }
+
+    function persistConnectionFields() {
+      state.connection.proxyUrl = normalizeProxyUrl(elements.proxyUrl.value);
+      state.connection.baseUrl = normalizeBaseUrl(elements.baseUrl.value);
+      state.connection.email = elements.email.value.trim();
+      state.connection.projectKey = elements.projectKey.value.trim().toUpperCase();
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state.connection));
+    }
+
+    function primeConnectionFields() {
+      elements.proxyUrl.value = state.connection.proxyUrl;
+      elements.baseUrl.value = state.connection.baseUrl;
+      elements.email.value = state.connection.email;
+      elements.projectKey.value = state.connection.projectKey;
+    }
+
+    function clearSession() {
+      state.issues = [];
+      state.hasLoaded = false;
+      state.projects = [];
+      state.filters.startDate = "";
+      state.filters.endDate = "";
+      elements.token.value = "";
+      elements.filterStartDate.value = "";
+      elements.filterEndDate.value = "";
+      renderProjectOptions();
+      setMessage("Cleared loaded issues and removed the token from the page.");
+      render();
+    }
+
+    async function discoverProjects() {
+      persistConnectionFields();
+      const token = elements.token.value.trim();
+      if (!state.connection.email) {
+        setMessage("Enter your Atlassian account email. Jira API tokens do not work without it.", true);
+        return;
+      }
+      if (!token) {
+        setMessage("Enter an API token for this session.", true);
+        return;
+      }
+
+      setBusy(true, "discover");
+      setMessage("Authenticating and listing visible projects...");
+
+      try {
+        state.projects = await fetchProxyProjects(state.connection.proxyUrl, state.connection.baseUrl, state.connection.email, token);
+        if (state.projects.length && !state.projects.some((project) => project.key === state.connection.projectKey)) {
+          state.connection.projectKey = state.projects[0].key;
+          elements.projectKey.value = state.connection.projectKey;
+          persistConnectionFields();
+        }
+        renderProjectOptions();
+        if (!state.projects.length) {
+          setMessage("Authentication worked, but this account cannot see any Jira projects on the site.", true);
+          return;
+        }
+        setMessage(`Found ${state.projects.length} visible projects. Choose one from the list or keep typing a key manually.`);
+      } catch (error) {
+        const message = buildFetchErrorMessage(error);
+        setMessage(message, true);
+      } finally {
+        setBusy(false, "discover");
+      }
+    }
+
+    async function loadJiraData() {
+      persistConnectionFields();
+      const token = elements.token.value.trim();
+      if (!state.connection.email) {
+        setMessage("Enter your Atlassian account email. Jira API tokens do not work without it.", true);
+        return;
+      }
+      if (!token) {
+        setMessage("Enter an API token for this session.", true);
+        return;
+      }
+      if (!state.connection.projectKey) {
+        setMessage("Enter a Jira project key.", true);
+        return;
+      }
+
+      setBusy(true, "load");
+      setMessage(`Loading resolved issues from project ${state.connection.projectKey}...`);
+
+      try {
+        state.issues = await fetchProxyLeadTimes(state.connection.proxyUrl, state.connection.baseUrl, state.connection.email, token, state.connection.projectKey);
+        state.hasLoaded = true;
+        primeFilterBounds();
+        render();
+        setMessage(`Loaded ${state.issues.length} resolved issues from ${state.connection.projectKey}.`);
+      } catch (error) {
+        const message = buildFetchErrorMessage(error);
+        setMessage(message, true);
+      } finally {
+        setBusy(false, "load");
+      }
+    }
+
+    async function fetchProxyProjects(proxyUrl, baseUrl, email, token) {
+      const payload = await proxyPost(proxyUrl, "/api/jira/projects", {
+        baseUrl,
+        email,
+        token
+      });
+      return Array.isArray(payload.projects) ? payload.projects : [];
+    }
+
+    async function fetchProxyLeadTimes(proxyUrl, baseUrl, email, token, projectKey) {
+      const payload = await proxyPost(proxyUrl, "/api/jira/lead-times", {
+        baseUrl,
+        email,
+        token,
+        projectKey
+      });
+      const issues = Array.isArray(payload.issues) ? payload.issues : [];
+      return issues.map((issue) => ({
+        ...issue,
+        createdAt: issue.createdAt ? new Date(issue.createdAt) : null,
+        resolvedAt: issue.resolvedAt ? new Date(issue.resolvedAt) : null,
+        leadTime: Number(issue.leadTime)
+      })).filter((issue) => issue.createdIso && issue.resolvedIso && Number.isFinite(issue.leadTime));
+    }
+
+    async function proxyPost(proxyUrl, path, body) {
+      const normalizedProxyUrl = normalizeProxyUrl(proxyUrl);
+      const response = await fetch(`${normalizedProxyUrl}${path}`, {
+        method: "POST",
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(body)
+      });
+
+      const text = await response.text();
+      let payload = null;
+      try {
+        payload = text ? JSON.parse(text) : null;
+      } catch (_error) {
+        payload = { error: text || "Unknown proxy response" };
+      }
+
+      if (!response.ok) {
+        throw new Error(`PROXY_${response.status}:${payload && payload.error ? payload.error : text}`);
+      }
+
+      return payload || {};
+    }
+
+    async function fetchAccessibleProjects(baseUrl, email, token) {
+      const normalizedBaseUrl = normalizeBaseUrl(baseUrl);
+      const authHeader = `Basic ${btoa(`${email}:${token}`)}`;
+      const response = await fetch(`${normalizedBaseUrl}rest/api/3/project/search?maxResults=100`, {
+        headers: {
+          "Accept": "application/json",
+          "Authorization": authHeader
+        }
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`PROJECT_LIST_${response.status}${text ? `: ${text}` : ""}`);
+      }
+
+      const payload = await response.json();
+      const values = Array.isArray(payload.values) ? payload.values : [];
+      return values.map((project) => ({
+        key: project.key,
+        name: project.name || project.key
+      })).sort((left, right) => left.key.localeCompare(right.key));
+    }
+
+    async function fetchAllResolvedIssues(baseUrl, email, token, projectKey) {
+      const normalizedBaseUrl = normalizeBaseUrl(baseUrl);
+      const authHeader = `Basic ${btoa(`${email}:${token}`)}`;
+      const jql = `project = ${projectKey} AND resolutiondate IS NOT EMPTY ORDER BY resolutiondate ASC`;
+      const fields = "summary,created,resolutiondate,status";
+      const batchSize = 100;
+      let nextPageToken = "";
+      let isLast = false;
+      const collected = [];
+
+      while (!isLast) {
+        const params = new URLSearchParams({
+          jql,
+          maxResults: String(batchSize),
+          fields
+        });
+        if (nextPageToken) {
+          params.set("nextPageToken", nextPageToken);
+        }
+
+        const response = await fetch(`${normalizedBaseUrl}rest/api/3/search/jql?${params.toString()}`, {
+          headers: {
+            "Accept": "application/json",
+            "Authorization": authHeader
+          }
+        });
+
+        if (!response.ok) {
+          const text = await response.text();
+          throw new Error(`SEARCH_${response.status}${text ? `: ${text}` : ""}`);
+        }
+
+        const payload = await response.json();
+        const batch = Array.isArray(payload.issues) ? payload.issues : [];
+        collected.push(...batch);
+        isLast = Boolean(payload.isLast !== false && !payload.nextPageToken);
+        nextPageToken = payload.nextPageToken || "";
+        if (!batch.length && !nextPageToken) {
+          isLast = true;
+        }
+      }
+
+      return collected;
+    }
+
+    async function validateJiraAccess(baseUrl, email, token, projectKey) {
+      await validateJiraIdentity(baseUrl, email, token);
+      await validateJiraProject(baseUrl, email, token, projectKey);
+    }
+
+    async function validateJiraIdentity(baseUrl, email, token) {
+      const normalizedBaseUrl = normalizeBaseUrl(baseUrl);
+      const authHeader = `Basic ${btoa(`${email}:${token}`)}`;
+      const myselfResponse = await fetch(`${normalizedBaseUrl}rest/api/3/myself`, {
+        headers: {
+          "Accept": "application/json",
+          "Authorization": authHeader
+        }
+      });
+      if (!myselfResponse.ok) {
+        const text = await myselfResponse.text();
+        throw new Error(`AUTH_${myselfResponse.status}${text ? `: ${text}` : ""}`);
+      }
+    }
+
+    async function validateJiraProject(baseUrl, email, token, projectKey) {
+      const normalizedBaseUrl = normalizeBaseUrl(baseUrl);
+      const authHeader = `Basic ${btoa(`${email}:${token}`)}`;
+      const projectResponse = await fetch(`${normalizedBaseUrl}rest/api/3/project/${encodeURIComponent(projectKey)}`, {
+        headers: {
+          "Accept": "application/json",
+          "Authorization": authHeader
+        }
+      });
+      if (!projectResponse.ok) {
+        const text = await projectResponse.text();
+        throw new Error(`PROJECT_${projectResponse.status}${text ? `: ${text}` : ""}`);
+      }
+    }
+
+    function renderProjectOptions() {
+      const placeholder = `<option value="">${state.projects.length ? "Select a discovered project" : "Discover projects after authentication"}</option>`;
+      const options = state.projects.map((project) => `<option value="${escapeHtml(project.key)}">${escapeHtml(project.key)} - ${escapeHtml(project.name)}</option>`).join("");
+      elements.projectSelect.innerHTML = `${placeholder}${options}`;
+      syncSelectedProject();
+    }
+
+    function syncSelectedProject() {
+      const hasMatch = state.projects.some((project) => project.key === state.connection.projectKey);
+      elements.projectSelect.value = hasMatch ? state.connection.projectKey : "";
+    }
+
+    function toLeadTimeIssue(issue) {
+      const created = issue?.fields?.created;
+      const resolved = issue?.fields?.resolutiondate;
+      if (!created || !resolved) {
+        return null;
+      }
+      const createdDate = new Date(created);
+      const resolvedDate = new Date(resolved);
+      if (Number.isNaN(createdDate.getTime()) || Number.isNaN(resolvedDate.getTime())) {
+        return null;
+      }
+      const leadTimeDays = roundToOneDecimal(Math.max(0, (resolvedDate.getTime() - createdDate.getTime()) / 86400000));
+      return {
+        key: issue.key,
+        summary: issue.fields.summary || "",
+        createdIso: toInputDate(createdDate),
+        resolvedIso: toInputDate(resolvedDate),
+        createdAt: createdDate,
+        resolvedAt: resolvedDate,
+        status: issue.fields.status?.name || "Unknown",
+        leadTime: leadTimeDays
+      };
+    }
+
+    function primeFilterBounds() {
+      const dates = state.issues.map((issue) => issue.resolvedIso).sort();
+      state.filters.startDate = dates[0] || "";
+      state.filters.endDate = dates[dates.length - 1] || "";
+      elements.filterStartDate.value = state.filters.startDate;
+      elements.filterEndDate.value = state.filters.endDate;
+    }
+
+    function getFilteredIssues() {
+      return state.issues.filter((issue) => {
+        const startPass = !state.filters.startDate || issue.resolvedIso >= state.filters.startDate;
+        const endPass = !state.filters.endDate || issue.resolvedIso <= state.filters.endDate;
+        return startPass && endPass;
+      });
+    }
+
+    function render() {
+      const filtered = getFilteredIssues();
+      const leadTimes = filtered.map((issue) => issue.leadTime);
+      const percentiles = {
+        p50: percentile(leadTimes, 0.5),
+        p85: percentile(leadTimes, 0.85),
+        p98: percentile(leadTimes, 0.98)
+      };
+
+      renderStats(filtered, percentiles);
+      renderSummary(filtered);
+      renderHistogram(filtered, percentiles);
+      renderTable(filtered);
+    }
+
+    function renderStats(filtered, percentiles) {
+      const issuesWord = filtered.length === 1 ? "issue" : "issues";
+      setStat(elements.p50Value, elements.p50Sub, percentiles.p50, filtered.length ? `Across ${filtered.length} resolved ${issuesWord}` : "Load Jira issues");
+      setStat(elements.p85Value, elements.p85Sub, percentiles.p85, filtered.length ? "Useful planning buffer" : "Load Jira issues");
+      setStat(elements.p98Value, elements.p98Sub, percentiles.p98, filtered.length ? "Extreme delivery tail" : "Load Jira issues");
+      elements.activeCount.textContent = String(filtered.length);
+      elements.activeSub.textContent = state.hasLoaded ? `${filtered.length} resolved issues in filter` : "No issues loaded";
+      elements.selectionPill.textContent = state.hasLoaded ? `${filtered.length} issues from ${state.connection.projectKey || "project"}` : "Awaiting Jira data";
+    }
+
+    function setStat(valueNode, subNode, value, text) {
+      valueNode.textContent = value === null ? "-" : `${formatDays(value)} d`;
+      subNode.textContent = text;
+    }
+
+    function renderSummary(filtered) {
+      const leadTimes = filtered.map((issue) => issue.leadTime);
+      const minLead = leadTimes.length ? Math.min(...leadTimes) : null;
+      const maxLead = leadTimes.length ? Math.max(...leadTimes) : null;
+      const dates = filtered.map((issue) => issue.resolvedIso).sort();
+      elements.selectionSummary.innerHTML = [
+        summaryCard("Project", state.connection.projectKey || "MS"),
+        summaryCard("Resolved period", dates.length ? `${formatLongDate(dates[0])} to ${formatLongDate(dates[dates.length - 1])}` : "No rows in view"),
+        summaryCard("Lead time range", minLead === null ? "No loaded issues" : `${formatDays(minLead)} to ${formatDays(maxLead)} days`)
+      ].join("");
+    }
+
+    function renderHistogram(filtered, percentiles) {
+      const values = filtered.map((issue) => issue.leadTime);
+      if (!values.length) {
+        elements.histogramPlot.innerHTML = emptyChartMarkup(state.hasLoaded ? `No resolved issues matched the current filter for ${escapeHtml(state.connection.projectKey || "the selected project")}.` : "Load resolved Jira issues to draw the histogram.");
+        return;
+      }
+
+      const bins = buildHistogramBins(values);
+      const width = 960;
+      const height = 420;
+      const padding = { top: 28, right: 24, bottom: 52, left: 58 };
+      const innerWidth = width - padding.left - padding.right;
+      const innerHeight = height - padding.top - padding.bottom;
+      const maxCount = Math.max(...bins.map((bin) => bin.count), 1);
+      const domainMin = bins[0].start;
+      const domainMax = bins[bins.length - 1].end;
+      const axisTicks = 5;
+      const tickValues = Array.from({ length: axisTicks }, (_, index) => roundToOneDecimal((maxCount / (axisTicks - 1)) * index));
+      const scaleX = (value) => {
+        if (domainMax === domainMin) {
+          return padding.left + innerWidth / 2;
+        }
+        return padding.left + ((value - domainMin) / (domainMax - domainMin)) * innerWidth;
+      };
+      const scaleY = (value) => padding.top + innerHeight - (value / maxCount) * innerHeight;
+      const barGap = Math.min(10, innerWidth * 0.01);
+      const barWidth = bins.length ? Math.max(10, innerWidth / bins.length - barGap) : innerWidth;
+
+      const gridLines = tickValues.map((value) => {
+        const y = scaleY(value);
+        return `
+          <line x1="${padding.left}" y1="${y}" x2="${width - padding.right}" y2="${y}" stroke="rgba(31, 42, 51, 0.12)" stroke-dasharray="4 6"></line>
+          <text x="${padding.left - 10}" y="${y + 4}" text-anchor="end" fill="#5f6b73" font-size="12">${value}</text>
+        `;
+      }).join("");
+
+      const bars = bins.map((bin, index) => {
+        const x = padding.left + index * (barWidth + barGap) + barGap / 2;
+        const y = scaleY(bin.count);
+        const heightValue = padding.top + innerHeight - y;
+        const label = `${formatDays(bin.start)}-${formatDays(bin.end)} d`;
+        return `
+          <g>
+            <rect x="${x}" y="${y}" width="${barWidth}" height="${heightValue}" rx="8" fill="rgba(10, 122, 109, 0.86)"></rect>
+            <title>${label}: ${bin.count} issues</title>
+          </g>
+        `;
+      }).join("");
+
+      const xTicks = bins.map((bin, index) => {
+        if (!(index === 0 || index === bins.length - 1 || index % Math.max(1, Math.floor(bins.length / 6)) === 0)) {
+          return "";
+        }
+        const center = padding.left + index * (barWidth + barGap) + barGap / 2 + barWidth / 2;
+        return `<text x="${center}" y="${height - padding.bottom + 22}" text-anchor="middle" fill="#5f6b73" font-size="12">${formatDays(bin.start)}</text>`;
+      }).join("");
+
+      const markers = [
+        { value: percentiles.p50, color: "#d66853", label: "P50" },
+        { value: percentiles.p85, color: "#d7a441", label: "P85" },
+        { value: percentiles.p98, color: "#7561d0", label: "P98" }
+      ].filter((marker) => marker.value !== null).map((marker) => {
+        const x = scaleX(marker.value);
+        return `
+          <line x1="${x}" y1="${padding.top}" x2="${x}" y2="${height - padding.bottom}" stroke="${marker.color}" stroke-width="2.5"></line>
+          <text x="${x}" y="${padding.top - 8}" text-anchor="middle" fill="${marker.color}" font-size="12" font-weight="700">${marker.label}: ${formatDays(marker.value)}d</text>
+        `;
+      }).join("");
+
+      elements.histogramPlot.innerHTML = `
+        <rect x="0" y="0" width="${width}" height="${height}" rx="18" fill="transparent"></rect>
+        ${gridLines}
+        <line x1="${padding.left}" y1="${height - padding.bottom}" x2="${width - padding.right}" y2="${height - padding.bottom}" stroke="rgba(31, 42, 51, 0.32)"></line>
+        <line x1="${padding.left}" y1="${padding.top}" x2="${padding.left}" y2="${height - padding.bottom}" stroke="rgba(31, 42, 51, 0.32)"></line>
+        ${bars}
+        ${markers}
+        ${xTicks}
+        <text x="${padding.left - 42}" y="${padding.top - 8}" fill="#5f6b73" font-size="12">Issues</text>
+        <text x="${width / 2}" y="${height - 12}" text-anchor="middle" fill="#5f6b73" font-size="12">Lead time in days</text>
+      `;
+    }
+
+    function renderTable(filtered) {
+      elements.tableSummary.textContent = `${filtered.length} rows`;
+      if (!filtered.length) {
+        elements.recordsBody.innerHTML = `<tr><td colspan="6"><div class="empty-state">${state.hasLoaded ? `No resolved issues matched the current filter for ${escapeHtml(state.connection.projectKey || "the selected project")}.` : "Load Jira issues to populate the table."}</div></td></tr>`;
+        return;
+      }
+      elements.recordsBody.innerHTML = filtered.map((issue) => `
+        <tr>
+          <td>${escapeHtml(issue.key)}</td>
+          <td>${escapeHtml(issue.summary)}</td>
+          <td>${formatLongDate(issue.createdIso)}</td>
+          <td>${formatLongDate(issue.resolvedIso)}</td>
+          <td>${formatDays(issue.leadTime)} days</td>
+          <td>${escapeHtml(issue.status)}</td>
+        </tr>
+      `).join("");
+    }
+
+    function buildHistogramBins(values) {
+      const sorted = [...values].sort((left, right) => left - right);
+      const min = sorted[0];
+      const max = sorted[sorted.length - 1];
+      if (min === max) {
+        return [{ start: min, end: max, count: sorted.length }];
+      }
+      const binCount = Math.min(18, Math.max(6, Math.round(Math.sqrt(sorted.length))));
+      const rawWidth = (max - min) / binCount;
+      const binWidth = rawWidth <= 1 ? 1 : roundToOneDecimal(rawWidth);
+      const bins = Array.from({ length: binCount }, (_, index) => ({
+        start: roundToOneDecimal(min + index * binWidth),
+        end: roundToOneDecimal(index === binCount - 1 ? max : min + (index + 1) * binWidth),
+        count: 0
+      }));
+
+      sorted.forEach((value) => {
+        const rawIndex = Math.floor((value - min) / binWidth);
+        const index = Math.min(binCount - 1, Math.max(0, rawIndex));
+        bins[index].count += 1;
+      });
+      return bins;
+    }
+
+    function percentile(values, ratio) {
+      if (!values.length) {
+        return null;
+      }
+      const sorted = [...values].sort((left, right) => left - right);
+      const position = (sorted.length - 1) * ratio;
+      const lowerIndex = Math.floor(position);
+      const upperIndex = Math.ceil(position);
+      if (lowerIndex === upperIndex) {
+        return roundToOneDecimal(sorted[lowerIndex]);
+      }
+      const weight = position - lowerIndex;
+      return roundToOneDecimal(sorted[lowerIndex] + (sorted[upperIndex] - sorted[lowerIndex]) * weight);
+    }
+
+    function summaryCard(label, value) {
+      return `<div class="summary-item"><strong>${escapeHtml(label)}</strong><span>${escapeHtml(value)}</span></div>`;
+    }
+
+    function normalizeBaseUrl(value) {
+      const trimmed = String(value || "").trim();
+      if (!trimmed) {
+        return "https://leanagileninja.atlassian.net/";
+      }
+      return trimmed.endsWith("/") ? trimmed : `${trimmed}/`;
+    }
+
+    function normalizeProxyUrl(value) {
+      const trimmed = String(value || "").trim();
+      if (!trimmed) {
+        return "http://127.0.0.1:8787";
+      }
+      return trimmed.endsWith("/") ? trimmed.slice(0, -1) : trimmed;
+    }
+
+    function setMessage(message, isError = false) {
+      elements.message.textContent = message;
+      elements.message.style.color = isError ? "#8c3f31" : "#0a7a6d";
+    }
+
+    function setBusy(isBusy, mode) {
+      elements.loadButton.disabled = isBusy;
+      elements.discoverProjectsButton.disabled = isBusy;
+      elements.loadButton.textContent = isBusy && mode === "load" ? "Loading..." : "Load Jira data";
+      elements.discoverProjectsButton.textContent = isBusy && mode === "discover" ? "Discovering..." : "Discover projects";
+    }
+
+    function buildFetchErrorMessage(error) {
+      const text = String(error && error.message ? error.message : error || "Unknown error");
+      if (/AUTH_401/.test(text)) {
+        return "Jira rejected the email and API token combination. Recheck the Atlassian account email, generate a fresh API token, and make sure the token belongs to the same Atlassian account as the email.";
+      }
+      if (/PROJECT_401/.test(text)) {
+        return "Authentication worked, but Jira rejected access while checking the project. Confirm the account has Jira product access on this site.";
+      }
+      if (/PROJECT_403/.test(text)) {
+        return "Authentication worked, but this account cannot browse project access for that key. Confirm Browse Projects permission for the project.";
+      }
+      if (/PROJECT_404/.test(text)) {
+        return "Authentication worked, but Jira could not find that project key for this account. Confirm the project key is correct and visible to this user.";
+      }
+      if (/PROJECT_LIST_401/.test(text)) {
+        return "Authentication failed while listing visible projects. Recheck the Atlassian account email and API token.";
+      }
+      if (/PROJECT_LIST_403/.test(text)) {
+        return "Authentication worked, but this account cannot list projects on the site. Confirm the user has Jira product access.";
+      }
+      if (/PROJECT_LIST_404/.test(text)) {
+        return "Jira did not expose the project listing endpoint for this site or this API path. Confirm the site URL is correct.";
+      }
+      if (/SEARCH_401/.test(text)) {
+        return "Authentication worked earlier, but Jira rejected the issue search request. Retry with a fresh token.";
+      }
+      if (/SEARCH_403/.test(text)) {
+        return "Project access worked, but Jira denied the issue search request. Confirm the account can browse issues in that project.";
+      }
+      if (/SEARCH_410/.test(text)) {
+        return "This Jira site rejected the search API variant used by the page. Reload the page and try again; if it persists, the site may require a different search API shape.";
+      }
+      if (/PROXY_400/.test(text)) {
+        return "The local Jira proxy rejected the request input. Check the proxy URL, Jira base URL, email, token, and project key.";
+      }
+      if (/PROXY_401|PROXY_403/.test(text)) {
+        return "The local Jira proxy reached Jira, but Jira rejected the request. Check the Atlassian account email, token, and permissions.";
+      }
+      if (/PROXY_404/.test(text)) {
+        return "The local Jira proxy endpoint was not found. Make sure you started jira-proxy.js and are using the correct proxy URL.";
+      }
+      if (/PROXY_500/.test(text)) {
+        return "The local Jira proxy hit an internal error while calling Jira. Check the proxy terminal output for details.";
+      }
+      if (/Failed to fetch|NetworkError|PROXY_/i.test(text)) {
+        return "The local Jira proxy could not be reached. Start jira-proxy.js locally and confirm the proxy URL matches the running port.";
+      }
+      if (/Failed to fetch|NetworkError/i.test(text)) {
+        return "Browser fetch failed. Jira Cloud often blocks direct browser requests from a local HTML file with CORS. If that happens, serve this page through a small local proxy or move the fetch server-side.";
+      }
+      if (/401/.test(text)) {
+        return "Jira rejected the credentials. Check the Atlassian email, token, and site URL.";
+      }
+      if (/403/.test(text)) {
+        return "Jira denied access. Confirm the token has access to the site and the project.";
+      }
+      return `Jira request failed: ${text}`;
+    }
+
+    function toInputDate(date) {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    }
+
+    function formatLongDate(input) {
+      if (!input) {
+        return "-";
+      }
+      const date = new Date(`${input}T00:00:00`);
+      return new Intl.DateTimeFormat("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric"
+      }).format(date);
+    }
+
+    function roundToOneDecimal(value) {
+      return Math.round(value * 10) / 10;
+    }
+
+    function formatDays(value) {
+      return Number.isInteger(value) ? String(value) : value.toFixed(1);
+    }
+
+    function emptyChartMarkup(message) {
+      return `
+        <foreignObject x="80" y="110" width="800" height="180">
+          <div xmlns="http://www.w3.org/1999/xhtml" class="empty-state">${escapeHtml(message)}</div>
+        </foreignObject>
+      `;
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/\"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+  </script>
+</body>
+</html>
