@@ -661,12 +661,12 @@
         <main class="main">
           <section class="stats">
             <article class="panel stat-card">
-              <div class="label">Median CT</div>
+              <div class="label">Average CT</div>
               <div class="value" id="xmrMedian">-</div>
               <div class="sub" id="xmrMedianSub">Awaiting workbook</div>
             </article>
             <article class="panel stat-card">
-              <div class="label">Average CT</div>
+              <div class="label">Avg Moving Range</div>
               <div class="value" id="xmrAverage">-</div>
               <div class="sub" id="xmrAverageSub">Awaiting workbook</div>
             </article>
@@ -686,13 +686,15 @@
             <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start; flex-wrap:wrap;">
               <div>
                 <h2 class="section-title" style="margin-bottom:6px;">Cycle time run chart</h2>
-                <div class="note">The run chart orders work items by date and overlays a median center line for the filtered subset.</div>
+                <div class="note">The run chart orders work items by date and overlays an average center line for the filtered subset.</div>
               </div>
               <div class="pill" id="xmrSelectionPill">Load workbook to begin</div>
             </div>
             <div class="legend">
               <span class="legend-item"><span class="legend-swatch" style="background: var(--accent);"></span>Cycle time</span>
-              <span class="legend-item"><span class="legend-swatch" style="background: var(--accent-2);"></span>Median center line</span>
+              <span class="legend-item"><span class="legend-swatch" style="background: var(--accent-2);"></span>Average center line</span>
+              <span class="legend-item"><span class="legend-swatch" style="background: var(--accent-3);"></span>Upper natural process limit</span>
+              <span class="legend-item"><span class="legend-swatch" style="background: var(--accent-4);"></span>Lower natural process limit</span>
             </div>
             <svg class="plot" id="xmrPlot" viewBox="0 0 960 420" preserveAspectRatio="xMidYMid meet" aria-label="Cycle time run chart"></svg>
           </section>
@@ -1379,27 +1381,29 @@
     function renderXmr() {
       const parsedRows = getParsedXmrRows();
       const filteredRows = getFilteredXmrRows();
-      const median = percentile(filteredRows.map((row) => row.cycleTime), 0.5);
       const average = filteredRows.length ? Math.round((filteredRows.reduce((sum, row) => sum + row.cycleTime, 0) / filteredRows.length) * 10) / 10 : null;
+      const averageMovingRange = getAverageMovingRange(filteredRows.map((row) => row.cycleTime));
+      const upperNaturalProcessLimit = averageMovingRange === null || average === null ? null : roundToOneDecimal(average + 2.66 * averageMovingRange);
+      const lowerNaturalProcessLimit = averageMovingRange === null || average === null ? null : roundToOneDecimal(average - 2.66 * averageMovingRange);
       const minCt = filteredRows.length ? Math.min(...filteredRows.map((row) => row.cycleTime)) : null;
       const maxCt = filteredRows.length ? Math.max(...filteredRows.map((row) => row.cycleTime)) : null;
 
-      elements.xmr.median.textContent = median === null ? "-" : `${median} d`;
-      elements.xmr.medianSub.textContent = median === null ? "Awaiting parsed rows" : `Center line based on ${filteredRows.length} visible rows`;
-      elements.xmr.average.textContent = average === null ? "-" : `${average} d`;
-      elements.xmr.averageSub.textContent = average === null ? "Awaiting parsed rows" : "Arithmetic mean for the current period";
+      elements.xmr.median.textContent = average === null ? "-" : `${average} d`;
+      elements.xmr.medianSub.textContent = average === null ? "Awaiting parsed rows" : `Average center line based on ${filteredRows.length} visible rows`;
+      elements.xmr.average.textContent = averageMovingRange === null ? "-" : `${averageMovingRange} d`;
+      elements.xmr.averageSub.textContent = averageMovingRange === null ? "Need at least two visible CTs" : "Used to calculate UNPL and LNPL";
       elements.xmr.count.textContent = parsedRows.length ? String(filteredRows.length) : "-";
       elements.xmr.countSub.textContent = parsedRows.length ? `${parsedRows.length} parsed from ${state.xmr.workbookName || "workbook"}` : "No data loaded";
       elements.xmr.range.textContent = minCt === null ? "-" : `${minCt}-${maxCt}`;
-      elements.xmr.rangeSub.textContent = minCt === null ? "No parsed cycle times" : "Minimum to maximum cycle time in days";
+      elements.xmr.rangeSub.textContent = minCt === null ? "No parsed cycle times" : `NPL ${formatLimit(lowerNaturalProcessLimit)} to ${formatLimit(upperNaturalProcessLimit)}`;
       elements.xmr.selectionPill.textContent = filteredRows.length ? `${state.xmr.selectedSheet} | ${filteredRows.length} visible points` : (state.xmr.workbookName ? "Adjust columns or period" : "Load workbook to begin");
 
-      renderXmrSummary(parsedRows, filteredRows);
+      renderXmrSummary(parsedRows, filteredRows, averageMovingRange, upperNaturalProcessLimit, lowerNaturalProcessLimit);
       renderXmrTable(filteredRows);
-      renderXmrChart(filteredRows, median);
+      renderXmrChart(filteredRows, average, upperNaturalProcessLimit, lowerNaturalProcessLimit);
     }
 
-    function renderXmrSummary(parsedRows, filteredRows) {
+    function renderXmrSummary(parsedRows, filteredRows, averageMovingRange, upperNaturalProcessLimit, lowerNaturalProcessLimit) {
       if (!state.xmr.workbookName) {
         elements.xmr.summary.innerHTML = `<div class="summary-item"><strong>No file loaded</strong><span>Choose the Team Cycle Time for XMR workbook to populate this tab.</span></div>`;
         return;
@@ -1414,7 +1418,9 @@
       elements.xmr.summary.innerHTML = [
         summaryCard("Workbook", `${state.xmr.workbookName}${state.xmr.selectedSheet ? ` | ${state.xmr.selectedSheet}` : ""}`),
         summaryCard("Mapped columns", `${state.xmr.dateColumn} and ${state.xmr.cycleColumn}`),
-        summaryCard("Visible period", dates.length ? `${formatLongDate(dates[0])} to ${formatLongDate(dates[dates.length - 1])}` : "No rows in range")
+        summaryCard("Visible period", dates.length ? `${formatLongDate(dates[0])} to ${formatLongDate(dates[dates.length - 1])}` : "No rows in range"),
+        summaryCard("Average moving range", averageMovingRange === null ? "Need at least two visible CTs" : `${averageMovingRange} days`),
+        summaryCard("Natural process limits", upperNaturalProcessLimit === null || lowerNaturalProcessLimit === null ? "Need at least two visible CTs" : `${formatLimit(lowerNaturalProcessLimit)} to ${formatLimit(upperNaturalProcessLimit)} days`)
       ].join("");
     }
 
@@ -1430,7 +1436,7 @@
       `).join("") : `<tr><td colspan="4"><div class="empty-state">No parsed XMR rows for the current sheet, column mapping, and date range.</div></td></tr>`;
     }
 
-    function renderXmrChart(filteredRows, median) {
+    function renderXmrChart(filteredRows, average, upperNaturalProcessLimit, lowerNaturalProcessLimit) {
       const chartRows = filteredRows.map((row, index) => ({
         completionDateIso: row.dateIso,
         cycleTime: row.cycleTime,
@@ -1445,7 +1451,9 @@
         label: "Cycle time (days)",
         pointTitle: (row) => `#${row.labelIndex} | ${formatLongDate(row.completionDateIso)} | ${row.cycleTime} days`,
         horizontalLines: [
-          { value: median, color: "#d66853", label: "Median" }
+          { value: average, color: "#d66853", label: "Average" },
+          { value: upperNaturalProcessLimit, color: "#d7a441", label: "UNPL" },
+          { value: lowerNaturalProcessLimit, color: "#7561d0", label: "LNPL" }
         ],
         tickLabel: (row, index) => {
           if (!chartRows.length) {
@@ -1569,6 +1577,26 @@
       const sorted = [...values].sort((left, right) => left - right);
       const index = Math.ceil(sorted.length * ratio) - 1;
       return sorted[Math.max(0, Math.min(index, sorted.length - 1))];
+    }
+
+    function getAverageMovingRange(values) {
+      if (values.length < 2) {
+        return null;
+      }
+      const movingRanges = [];
+      for (let index = 1; index < values.length; index += 1) {
+        movingRanges.push(Math.abs(values[index] - values[index - 1]));
+      }
+      const averageMovingRange = movingRanges.reduce((sum, value) => sum + value, 0) / movingRanges.length;
+      return roundToOneDecimal(averageMovingRange);
+    }
+
+    function roundToOneDecimal(value) {
+      return Math.round(value * 10) / 10;
+    }
+
+    function formatLimit(value) {
+      return value === null ? "-" : `${value}`;
     }
 
     function parsePolishDate(text) {
