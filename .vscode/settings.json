@@ -1,0 +1,12 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^git add dashboard\\.html; git commit -m \"Use average center line for XMR chart\"; git push origin main$/": {
+            "approve": true,
+            "matchCommandLine": true
+        },
+        "/^git status --short; git rev-parse HEAD; git rev-parse origin/main$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}

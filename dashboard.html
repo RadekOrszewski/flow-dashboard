@@ -386,6 +386,54 @@
       font-weight: 600;
     }
 
+    .signal-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .signal-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 0.74rem;
+      font-weight: 700;
+      line-height: 1;
+      border: 1px solid transparent;
+      white-space: nowrap;
+    }
+
+    .signal-badge.strong {
+      background: rgba(214, 104, 83, 0.14);
+      color: #8c3f31;
+      border-color: rgba(214, 104, 83, 0.24);
+    }
+
+    .signal-badge.moderate {
+      background: rgba(215, 164, 65, 0.16);
+      color: #8a6310;
+      border-color: rgba(215, 164, 65, 0.26);
+    }
+
+    .signal-badge.weak {
+      background: rgba(117, 97, 208, 0.14);
+      color: #4f43a1;
+      border-color: rgba(117, 97, 208, 0.24);
+    }
+
+    .signal-badge.revisiting {
+      background: rgba(10, 122, 109, 0.12);
+      color: #06594f;
+      border-color: rgba(10, 122, 109, 0.22);
+    }
+
+    .signal-badge.none {
+      background: rgba(31, 42, 51, 0.06);
+      color: var(--muted);
+      border-color: rgba(31, 42, 51, 0.1);
+    }
+
     .empty-state {
       padding: 30px 16px;
       text-align: center;
@@ -447,6 +495,7 @@
     <nav class="tab-bar" aria-label="Dashboard tabs">
       <button class="tab-button active" type="button" data-tab="lead">Lead Times</button>
       <button class="tab-button" type="button" data-tab="xmr">XMR Cycle Time</button>
+      <button class="tab-button" type="button" data-tab="throughput">Daily Throughput</button>
     </nav>
 
     <section class="tab-panel active" id="leadTab">
@@ -685,8 +734,8 @@
           <section class="panel content-card chart-wrap">
             <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start; flex-wrap:wrap;">
               <div>
-                <h2 class="section-title" style="margin-bottom:6px;">Cycle time run chart</h2>
-                <div class="note">The run chart orders work items by date and overlays an average center line for the filtered subset.</div>
+                <h2 class="section-title" style="margin-bottom:6px;">X-chart</h2>
+                <div class="note">Cycle times in date order with average center line and natural process limits.</div>
               </div>
               <div class="pill" id="xmrSelectionPill">Load workbook to begin</div>
             </div>
@@ -695,8 +744,33 @@
               <span class="legend-item"><span class="legend-swatch" style="background: var(--accent-2);"></span>Average center line</span>
               <span class="legend-item"><span class="legend-swatch" style="background: var(--accent-3);"></span>Upper natural process limit</span>
               <span class="legend-item"><span class="legend-swatch" style="background: var(--accent-4);"></span>Lower natural process limit</span>
+              <span class="legend-item"><span class="legend-swatch" style="background: #8c3f31;"></span>Strong signal</span>
+              <span class="legend-item"><span class="legend-swatch" style="background: #8a6310;"></span>Moderate signal</span>
+              <span class="legend-item"><span class="legend-swatch" style="background: #4f43a1;"></span>Weak signal</span>
+              <span class="legend-item"><span class="legend-swatch" style="background: #06594f;"></span>Revisiting signal</span>
             </div>
-            <svg class="plot" id="xmrPlot" viewBox="0 0 960 420" preserveAspectRatio="xMidYMid meet" aria-label="Cycle time run chart"></svg>
+            <svg class="plot" id="xmrPlot" viewBox="0 0 960 420" preserveAspectRatio="xMidYMid meet" aria-label="X chart"></svg>
+          </section>
+
+          <section class="panel content-card chart-wrap">
+            <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start; flex-wrap:wrap;">
+              <div>
+                <h2 class="section-title" style="margin-bottom:6px;">MR-chart</h2>
+                <div class="note">Moving ranges between consecutive cycle times with average MR, URL, and LRL.</div>
+              </div>
+              <div class="pill" id="mrSelectionPill">Awaiting MR data</div>
+            </div>
+            <div class="legend">
+              <span class="legend-item"><span class="legend-swatch" style="background: var(--accent);"></span>Moving range</span>
+              <span class="legend-item"><span class="legend-swatch" style="background: var(--accent-2);"></span>Average MR</span>
+              <span class="legend-item"><span class="legend-swatch" style="background: var(--accent-3);"></span>URL</span>
+              <span class="legend-item"><span class="legend-swatch" style="background: var(--accent-4);"></span>LRL</span>
+              <span class="legend-item"><span class="legend-swatch" style="background: #8c3f31;"></span>Strong signal</span>
+              <span class="legend-item"><span class="legend-swatch" style="background: #8a6310;"></span>Moderate signal</span>
+              <span class="legend-item"><span class="legend-swatch" style="background: #4f43a1;"></span>Weak signal</span>
+              <span class="legend-item"><span class="legend-swatch" style="background: #06594f;"></span>Revisiting signal</span>
+            </div>
+            <svg class="plot" id="mrPlot" viewBox="0 0 960 420" preserveAspectRatio="xMidYMid meet" aria-label="Moving range chart"></svg>
           </section>
 
           <section class="panel content-card">
@@ -714,10 +788,145 @@
                     <th>#</th>
                     <th>Date</th>
                     <th>Cycle time</th>
+                    <th>Signal</th>
                     <th>Source row</th>
                   </tr>
                 </thead>
                 <tbody id="xmrBody"></tbody>
+              </table>
+            </div>
+          </section>
+        </main>
+      </div>
+    </section>
+
+    <section class="tab-panel" id="throughputTab">
+      <div class="layout">
+        <aside class="panel sidebar">
+          <div class="stack">
+            <section>
+              <h2 class="section-title">Throughput source</h2>
+              <div class="summary-list" id="throughputWorkbookSummary">
+                <div class="summary-item">
+                  <strong>Workbook</strong>
+                  <span>Throughput Daily.xlsx</span>
+                </div>
+                <div class="summary-item">
+                  <strong>Mapped columns</strong>
+                  <span>Data (DD/MM/YYYY) and Przepustowość</span>
+                </div>
+              </div>
+            </section>
+
+            <section>
+              <h2 class="section-title">Throughput filter</h2>
+              <div class="field-grid">
+                <label>
+                  Period start
+                  <input id="throughputStartDate" type="date">
+                </label>
+                <label>
+                  Period end
+                  <input id="throughputEndDate" type="date">
+                </label>
+              </div>
+              <div class="button-row" style="margin-top: 12px;">
+                <button class="secondary" id="throughputReset" type="button">Reset throughput filters</button>
+              </div>
+            </section>
+
+            <section>
+              <h2 class="section-title">Throughput snapshot</h2>
+              <div class="summary-list" id="throughputSummary"></div>
+            </section>
+          </div>
+        </aside>
+
+        <main class="main">
+          <section class="stats">
+            <article class="panel stat-card">
+              <div class="label">Average Throughput</div>
+              <div class="value" id="throughputAverage">-</div>
+              <div class="sub" id="throughputAverageSub">Awaiting data</div>
+            </article>
+            <article class="panel stat-card">
+              <div class="label">Avg Moving Range</div>
+              <div class="value" id="throughputAverageMr">-</div>
+              <div class="sub" id="throughputAverageMrSub">Awaiting data</div>
+            </article>
+            <article class="panel stat-card">
+              <div class="label">Visible Days</div>
+              <div class="value" id="throughputCount">-</div>
+              <div class="sub" id="throughputCountSub">No data loaded</div>
+            </article>
+            <article class="panel stat-card">
+              <div class="label">Throughput Range</div>
+              <div class="value" id="throughputRange">-</div>
+              <div class="sub" id="throughputRangeSub">No throughput values</div>
+            </article>
+          </section>
+
+          <section class="panel content-card chart-wrap">
+            <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start; flex-wrap:wrap;">
+              <div>
+                <h2 class="section-title" style="margin-bottom:6px;">Throughput X-chart</h2>
+                <div class="note">Daily throughput with average center line and natural process limits.</div>
+              </div>
+              <div class="pill" id="throughputSelectionPill">Load workbook to begin</div>
+            </div>
+            <div class="legend">
+              <span class="legend-item"><span class="legend-swatch" style="background: var(--accent);"></span>Throughput</span>
+              <span class="legend-item"><span class="legend-swatch" style="background: var(--accent-2);"></span>Average center line</span>
+              <span class="legend-item"><span class="legend-swatch" style="background: var(--accent-3);"></span>Upper natural process limit</span>
+              <span class="legend-item"><span class="legend-swatch" style="background: var(--accent-4);"></span>Lower natural process limit</span>
+              <span class="legend-item"><span class="legend-swatch" style="background: #8c3f31;"></span>Strong signal</span>
+              <span class="legend-item"><span class="legend-swatch" style="background: #8a6310;"></span>Moderate signal</span>
+              <span class="legend-item"><span class="legend-swatch" style="background: #4f43a1;"></span>Weak signal</span>
+              <span class="legend-item"><span class="legend-swatch" style="background: #06594f;"></span>Revisiting signal</span>
+            </div>
+            <svg class="plot" id="throughputPlot" viewBox="0 0 960 420" preserveAspectRatio="xMidYMid meet" aria-label="Throughput X chart"></svg>
+          </section>
+
+          <section class="panel content-card chart-wrap">
+            <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start; flex-wrap:wrap;">
+              <div>
+                <h2 class="section-title" style="margin-bottom:6px;">Throughput MR-chart</h2>
+                <div class="note">Moving ranges for consecutive daily throughput values with MR limits.</div>
+              </div>
+              <div class="pill" id="throughputMrSelectionPill">Awaiting MR data</div>
+            </div>
+            <div class="legend">
+              <span class="legend-item"><span class="legend-swatch" style="background: var(--accent);"></span>Moving range</span>
+              <span class="legend-item"><span class="legend-swatch" style="background: var(--accent-2);"></span>Average MR</span>
+              <span class="legend-item"><span class="legend-swatch" style="background: var(--accent-3);"></span>URL</span>
+              <span class="legend-item"><span class="legend-swatch" style="background: var(--accent-4);"></span>LRL</span>
+              <span class="legend-item"><span class="legend-swatch" style="background: #8c3f31;"></span>Strong signal</span>
+              <span class="legend-item"><span class="legend-swatch" style="background: #8a6310;"></span>Moderate signal</span>
+              <span class="legend-item"><span class="legend-swatch" style="background: #4f43a1;"></span>Weak signal</span>
+              <span class="legend-item"><span class="legend-swatch" style="background: #06594f;"></span>Revisiting signal</span>
+            </div>
+            <svg class="plot" id="throughputMrPlot" viewBox="0 0 960 420" preserveAspectRatio="xMidYMid meet" aria-label="Throughput moving range chart"></svg>
+          </section>
+
+          <section class="panel content-card">
+            <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start; flex-wrap:wrap; margin-bottom:14px;">
+              <div>
+                <h2 class="section-title" style="margin-bottom:6px;">Daily throughput rows</h2>
+                <div class="note">Signal detection uses the same rules as the XMR tab and is shown for each visible day.</div>
+              </div>
+              <div class="pill" id="throughputTableSummary">0 rows</div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Date</th>
+                    <th>Throughput</th>
+                    <th>Signal</th>
+                  </tr>
+                </thead>
+                <tbody id="throughputBody"></tbody>
               </table>
             </div>
           </section>
@@ -801,6 +1010,112 @@
       { id: 30, started: "3.20.2024", closed: "4.9.2024", cycleTime: 20 }
     ];
 
+    const THROUGHPUT_RAW_DATA = [
+      { date: "07.01.2025", throughput: 0 },
+      { date: "08.01.2025", throughput: 2 },
+      { date: "09.01.2025", throughput: 10 },
+      { date: "10.01.2025", throughput: 3 },
+      { date: "11.01.2025", throughput: 0 },
+      { date: "12.01.2025", throughput: 0 },
+      { date: "13.01.2025", throughput: 2 },
+      { date: "14.01.2025", throughput: 3 },
+      { date: "15.01.2025", throughput: 7 },
+      { date: "16.01.2025", throughput: 0 },
+      { date: "17.01.2025", throughput: 0 },
+      { date: "18.01.2025", throughput: 0 },
+      { date: "19.01.2025", throughput: 0 },
+      { date: "20.01.2025", throughput: 5 },
+      { date: "21.01.2025", throughput: 2 },
+      { date: "22.01.2025", throughput: 0 },
+      { date: "23.01.2025", throughput: 0 },
+      { date: "24.01.2025", throughput: 0 },
+      { date: "25.01.2025", throughput: 0 },
+      { date: "26.01.2025", throughput: 0 },
+      { date: "27.01.2025", throughput: 1 },
+      { date: "28.01.2025", throughput: 1 },
+      { date: "29.01.2025", throughput: 0 },
+      { date: "30.01.2025", throughput: 5 },
+      { date: "31.01.2025", throughput: 4 },
+      { date: "01.02.2025", throughput: 0 },
+      { date: "02.02.2025", throughput: 0 },
+      { date: "03.02.2025", throughput: 7 },
+      { date: "04.02.2025", throughput: 0 },
+      { date: "05.02.2025", throughput: 2 },
+      { date: "06.02.2025", throughput: 2 },
+      { date: "07.02.2025", throughput: 12 },
+      { date: "08.02.2025", throughput: 0 },
+      { date: "09.02.2025", throughput: 0 },
+      { date: "10.02.2025", throughput: 1 },
+      { date: "11.02.2025", throughput: 0 },
+      { date: "12.02.2025", throughput: 0 },
+      { date: "13.02.2025", throughput: 2 },
+      { date: "14.02.2025", throughput: 12 },
+      { date: "15.02.2025", throughput: 0 },
+      { date: "16.02.2025", throughput: 0 },
+      { date: "17.02.2025", throughput: 1 },
+      { date: "18.02.2025", throughput: 0 },
+      { date: "19.02.2025", throughput: 0 },
+      { date: "20.02.2025", throughput: 3 },
+      { date: "21.02.2025", throughput: 11 },
+      { date: "22.02.2025", throughput: 0 },
+      { date: "23.02.2025", throughput: 0 },
+      { date: "24.02.2025", throughput: 6 },
+      { date: "25.02.2025", throughput: 0 },
+      { date: "26.02.2025", throughput: 0 },
+      { date: "27.02.2025", throughput: 6 },
+      { date: "28.02.2025", throughput: 7 },
+      { date: "01.03.2025", throughput: 0 },
+      { date: "02.03.2025", throughput: 0 },
+      { date: "03.03.2025", throughput: 2 },
+      { date: "04.03.2025", throughput: 0 },
+      { date: "05.03.2025", throughput: 0 },
+      { date: "06.03.2025", throughput: 3 },
+      { date: "07.03.2025", throughput: 5 },
+      { date: "08.03.2025", throughput: 0 },
+      { date: "09.03.2025", throughput: 0 },
+      { date: "10.03.2025", throughput: 1 },
+      { date: "11.03.2025", throughput: 0 },
+      { date: "12.03.2025", throughput: 0 },
+      { date: "13.03.2025", throughput: 9 },
+      { date: "14.03.2025", throughput: 7 },
+      { date: "15.03.2025", throughput: 0 },
+      { date: "16.03.2025", throughput: 0 },
+      { date: "17.03.2025", throughput: 3 },
+      { date: "18.03.2025", throughput: 0 },
+      { date: "19.03.2025", throughput: 0 },
+      { date: "20.03.2025", throughput: 4 },
+      { date: "21.03.2025", throughput: 10 },
+      { date: "22.03.2025", throughput: 0 },
+      { date: "23.03.2025", throughput: 0 },
+      { date: "24.03.2025", throughput: 1 },
+      { date: "25.03.2025", throughput: 0 },
+      { date: "26.03.2025", throughput: 0 },
+      { date: "27.03.2025", throughput: 5 },
+      { date: "28.03.2025", throughput: 1 },
+      { date: "29.03.2025", throughput: 0 },
+      { date: "30.03.2025", throughput: 0 },
+      { date: "31.03.2025", throughput: 2 },
+      { date: "01.04.2025", throughput: 0 },
+      { date: "02.04.2025", throughput: 0 },
+      { date: "03.04.2025", throughput: 2 },
+      { date: "04.04.2025", throughput: 11 },
+      { date: "05.04.2025", throughput: 0 },
+      { date: "06.04.2025", throughput: 0 },
+      { date: "07.04.2025", throughput: 1 },
+      { date: "08.04.2025", throughput: 0 },
+      { date: "09.04.2025", throughput: 0 },
+      { date: "10.04.2025", throughput: 5 },
+      { date: "11.04.2025", throughput: 2 },
+      { date: "12.04.2025", throughput: 0 },
+      { date: "13.04.2025", throughput: 0 },
+      { date: "14.04.2025", throughput: 1 },
+      { date: "15.04.2025", throughput: 0 },
+      { date: "16.04.2025", throughput: 0 },
+      { date: "17.04.2025", throughput: 4 },
+      { date: "18.04.2025", throughput: 7 },
+      { date: "19.04.2025", throughput: 0 }
+    ];
+
     const MONTHS = {
       stycznia: 0,
       lutego: 1,
@@ -837,6 +1152,12 @@
         cycleColumn: "",
         startDate: "",
         endDate: ""
+      },
+      throughput: {
+        workbookName: "",
+        rows: [],
+        startDate: "",
+        endDate: ""
       }
     };
 
@@ -844,7 +1165,8 @@
       tabs: Array.from(document.querySelectorAll(".tab-button")),
       panels: {
         lead: document.getElementById("leadTab"),
-        xmr: document.getElementById("xmrTab")
+        xmr: document.getElementById("xmrTab"),
+        throughput: document.getElementById("throughputTab")
       },
       lead: {
         sizeFilter: document.getElementById("sizeFilter"),
@@ -893,8 +1215,30 @@
         rangeSub: document.getElementById("xmrRangeSub"),
         selectionPill: document.getElementById("xmrSelectionPill"),
         plot: document.getElementById("xmrPlot"),
+        mrSelectionPill: document.getElementById("mrSelectionPill"),
+        mrPlot: document.getElementById("mrPlot"),
         tableSummary: document.getElementById("xmrTableSummary"),
         body: document.getElementById("xmrBody")
+      },
+      throughput: {
+        startDate: document.getElementById("throughputStartDate"),
+        endDate: document.getElementById("throughputEndDate"),
+        reset: document.getElementById("throughputReset"),
+        summary: document.getElementById("throughputSummary"),
+        average: document.getElementById("throughputAverage"),
+        averageSub: document.getElementById("throughputAverageSub"),
+        averageMr: document.getElementById("throughputAverageMr"),
+        averageMrSub: document.getElementById("throughputAverageMrSub"),
+        count: document.getElementById("throughputCount"),
+        countSub: document.getElementById("throughputCountSub"),
+        range: document.getElementById("throughputRange"),
+        rangeSub: document.getElementById("throughputRangeSub"),
+        selectionPill: document.getElementById("throughputSelectionPill"),
+        plot: document.getElementById("throughputPlot"),
+        mrSelectionPill: document.getElementById("throughputMrSelectionPill"),
+        mrPlot: document.getElementById("throughputMrPlot"),
+        tableSummary: document.getElementById("throughputTableSummary"),
+        body: document.getElementById("throughputBody")
       }
     };
 
@@ -904,6 +1248,7 @@
       setupTabs();
       initLeadTab();
       initXmrTab();
+      initThroughputTab();
     }
 
     function setupTabs() {
@@ -1212,6 +1557,13 @@
       renderXmr();
     }
 
+    function initThroughputTab() {
+      seedThroughputWorkbook();
+      bindThroughputInputs();
+      primeThroughputPeriod();
+      renderThroughput();
+    }
+
     function seedXmrWorkbook() {
       state.xmr.workbookName = "Team Cycle Time for XMR.xlsx";
       state.xmr.sheetNames = ["Dane z tabeli i dalsze opcje"];
@@ -1227,6 +1579,15 @@
       refreshXmrSheetOptions();
       refreshXmrColumnOptions();
       syncXmrDateBounds(true);
+    }
+
+    function seedThroughputWorkbook() {
+      state.throughput.workbookName = "Throughput Daily.xlsx";
+      state.throughput.rows = THROUGHPUT_RAW_DATA.map((row, index) => ({
+        index: index + 2,
+        dateIso: parseDayMonthDotDate(row.date),
+        throughput: Number(row.throughput)
+      })).filter((row) => row.dateIso && Number.isFinite(row.throughput));
     }
 
     function bindXmrInputs() {
@@ -1258,6 +1619,32 @@
         syncXmrDateBounds(true);
         renderXmr();
       });
+    }
+
+    function bindThroughputInputs() {
+      elements.throughput.startDate.addEventListener("change", () => {
+        state.throughput.startDate = elements.throughput.startDate.value;
+        renderThroughput();
+      });
+      elements.throughput.endDate.addEventListener("change", () => {
+        state.throughput.endDate = elements.throughput.endDate.value;
+        renderThroughput();
+      });
+      elements.throughput.reset.addEventListener("click", () => {
+        primeThroughputPeriod();
+        renderThroughput();
+      });
+    }
+
+    function primeThroughputPeriod() {
+      const dates = state.throughput.rows.map((row) => row.dateIso).sort();
+      if (!dates.length) {
+        return;
+      }
+      state.throughput.startDate = dates[0];
+      state.throughput.endDate = dates[dates.length - 1];
+      elements.throughput.startDate.value = state.throughput.startDate;
+      elements.throughput.endDate.value = state.throughput.endDate;
     }
 
     async function handleXmrFileSelection(event) {
@@ -1381,10 +1768,23 @@
     function renderXmr() {
       const parsedRows = getParsedXmrRows();
       const filteredRows = getFilteredXmrRows();
+      const movingRangeRows = getMovingRangeRows(filteredRows);
       const average = filteredRows.length ? Math.round((filteredRows.reduce((sum, row) => sum + row.cycleTime, 0) / filteredRows.length) * 10) / 10 : null;
       const averageMovingRange = getAverageMovingRange(filteredRows.map((row) => row.cycleTime));
       const upperNaturalProcessLimit = averageMovingRange === null || average === null ? null : roundToOneDecimal(average + 2.66 * averageMovingRange);
       const lowerNaturalProcessLimit = averageMovingRange === null || average === null ? null : roundToOneDecimal(average - 2.66 * averageMovingRange);
+      const upperRangeLimit = averageMovingRange === null ? null : roundToOneDecimal(3.27 * averageMovingRange);
+      const lowerRangeLimit = averageMovingRange === null ? null : roundToOneDecimal(-3.27 * averageMovingRange);
+      const xSignals = getSignalAnnotations(filteredRows.map((row) => row.cycleTime), average, lowerNaturalProcessLimit, upperNaturalProcessLimit);
+      const mrSignals = getSignalAnnotations(movingRangeRows.map((row) => row.movingRange), averageMovingRange, lowerRangeLimit, upperRangeLimit);
+      const annotatedRows = filteredRows.map((row, index) => ({
+        ...row,
+        signal: xSignals[index]
+      }));
+      const annotatedMovingRangeRows = movingRangeRows.map((row, index) => ({
+        ...row,
+        signal: mrSignals[index]
+      }));
       const minCt = filteredRows.length ? Math.min(...filteredRows.map((row) => row.cycleTime)) : null;
       const maxCt = filteredRows.length ? Math.max(...filteredRows.map((row) => row.cycleTime)) : null;
 
@@ -1397,13 +1797,147 @@
       elements.xmr.range.textContent = minCt === null ? "-" : `${minCt}-${maxCt}`;
       elements.xmr.rangeSub.textContent = minCt === null ? "No parsed cycle times" : `NPL ${formatLimit(lowerNaturalProcessLimit)} to ${formatLimit(upperNaturalProcessLimit)}`;
       elements.xmr.selectionPill.textContent = filteredRows.length ? `${state.xmr.selectedSheet} | ${filteredRows.length} visible points` : (state.xmr.workbookName ? "Adjust columns or period" : "Load workbook to begin");
+      elements.xmr.mrSelectionPill.textContent = movingRangeRows.length ? `${movingRangeRows.length} moving ranges | URL ${formatLimit(upperRangeLimit)}` : "Need at least two visible CTs";
 
-      renderXmrSummary(parsedRows, filteredRows, averageMovingRange, upperNaturalProcessLimit, lowerNaturalProcessLimit);
-      renderXmrTable(filteredRows);
-      renderXmrChart(filteredRows, average, upperNaturalProcessLimit, lowerNaturalProcessLimit);
+      renderXmrSummary(parsedRows, filteredRows, averageMovingRange, upperNaturalProcessLimit, lowerNaturalProcessLimit, upperRangeLimit, lowerRangeLimit);
+      renderXmrTable(annotatedRows);
+      renderXmrChart(annotatedRows, average, upperNaturalProcessLimit, lowerNaturalProcessLimit);
+      renderMrChart(annotatedMovingRangeRows, averageMovingRange, upperRangeLimit, lowerRangeLimit);
     }
 
-    function renderXmrSummary(parsedRows, filteredRows, averageMovingRange, upperNaturalProcessLimit, lowerNaturalProcessLimit) {
+    function getFilteredThroughputRows() {
+      return state.throughput.rows.filter((row) => {
+        const startPass = !state.throughput.startDate || row.dateIso >= state.throughput.startDate;
+        const endPass = !state.throughput.endDate || row.dateIso <= state.throughput.endDate;
+        return startPass && endPass;
+      });
+    }
+
+    function renderThroughput() {
+      const filteredRows = getFilteredThroughputRows();
+      const movingRangeRows = getMovingRangeRows(filteredRows.map((row) => ({ dateIso: row.dateIso, cycleTime: row.throughput })));
+      const average = filteredRows.length ? roundToOneDecimal(filteredRows.reduce((sum, row) => sum + row.throughput, 0) / filteredRows.length) : null;
+      const averageMovingRange = getAverageMovingRange(filteredRows.map((row) => row.throughput));
+      const upperNaturalProcessLimit = averageMovingRange === null || average === null ? null : roundToOneDecimal(average + 2.66 * averageMovingRange);
+      const lowerNaturalProcessLimit = averageMovingRange === null || average === null ? null : roundToOneDecimal(average - 2.66 * averageMovingRange);
+      const upperRangeLimit = averageMovingRange === null ? null : roundToOneDecimal(3.27 * averageMovingRange);
+      const lowerRangeLimit = averageMovingRange === null ? null : roundToOneDecimal(-3.27 * averageMovingRange);
+      const throughputSignals = getSignalAnnotations(filteredRows.map((row) => row.throughput), average, lowerNaturalProcessLimit, upperNaturalProcessLimit);
+      const mrSignals = getSignalAnnotations(movingRangeRows.map((row) => row.movingRange), averageMovingRange, lowerRangeLimit, upperRangeLimit);
+      const annotatedRows = filteredRows.map((row, index) => ({ ...row, signal: throughputSignals[index] }));
+      const annotatedMrRows = movingRangeRows.map((row, index) => ({ ...row, signal: mrSignals[index] }));
+      const minValue = filteredRows.length ? Math.min(...filteredRows.map((row) => row.throughput)) : null;
+      const maxValue = filteredRows.length ? Math.max(...filteredRows.map((row) => row.throughput)) : null;
+
+      elements.throughput.average.textContent = average === null ? "-" : `${average} items`;
+      elements.throughput.averageSub.textContent = average === null ? "Awaiting data" : `Average center line based on ${filteredRows.length} visible days`;
+      elements.throughput.averageMr.textContent = averageMovingRange === null ? "-" : `${averageMovingRange} items`;
+      elements.throughput.averageMrSub.textContent = averageMovingRange === null ? "Need at least two visible days" : "Used to calculate throughput limits";
+      elements.throughput.count.textContent = String(filteredRows.length || 0);
+      elements.throughput.countSub.textContent = filteredRows.length ? `${filteredRows.length} parsed from ${state.throughput.workbookName}` : "No data loaded";
+      elements.throughput.range.textContent = minValue === null ? "-" : `${minValue}-${maxValue}`;
+      elements.throughput.rangeSub.textContent = minValue === null ? "No throughput values" : `NPL ${formatLimit(lowerNaturalProcessLimit)} to ${formatLimit(upperNaturalProcessLimit)}`;
+      elements.throughput.selectionPill.textContent = filteredRows.length ? `${filteredRows.length} visible days` : "Adjust period";
+      elements.throughput.mrSelectionPill.textContent = annotatedMrRows.length ? `${annotatedMrRows.length} moving ranges | URL ${formatLimit(upperRangeLimit)}` : "Need at least two visible days";
+
+      renderThroughputSummary(filteredRows, averageMovingRange, upperNaturalProcessLimit, lowerNaturalProcessLimit, upperRangeLimit, lowerRangeLimit);
+      renderThroughputTable(annotatedRows);
+      renderThroughputXChart(annotatedRows, average, upperNaturalProcessLimit, lowerNaturalProcessLimit);
+      renderThroughputMrChart(annotatedMrRows, averageMovingRange, upperRangeLimit, lowerRangeLimit);
+    }
+
+    function renderThroughputSummary(filteredRows, averageMovingRange, upperNaturalProcessLimit, lowerNaturalProcessLimit, upperRangeLimit, lowerRangeLimit) {
+      const dates = filteredRows.map((row) => row.dateIso).sort();
+      elements.throughput.summary.innerHTML = [
+        summaryCard("Workbook", state.throughput.workbookName || "Throughput Daily.xlsx"),
+        summaryCard("Visible period", dates.length ? `${formatLongDate(dates[0])} to ${formatLongDate(dates[dates.length - 1])}` : "No rows in range"),
+        summaryCard("Average moving range", averageMovingRange === null ? "Need at least two visible days" : `${averageMovingRange} items`),
+        summaryCard("X-chart limits", upperNaturalProcessLimit === null || lowerNaturalProcessLimit === null ? "Need at least two visible days" : `${formatLimit(lowerNaturalProcessLimit)} to ${formatLimit(upperNaturalProcessLimit)} items`),
+        summaryCard("MR-chart limits", upperRangeLimit === null || lowerRangeLimit === null ? "Need at least two visible days" : `${formatLimit(lowerRangeLimit)} to ${formatLimit(upperRangeLimit)} items`)
+      ].join("");
+    }
+
+    function renderThroughputTable(rows) {
+      elements.throughput.tableSummary.textContent = `${rows.length} visible rows`;
+      elements.throughput.body.innerHTML = rows.length ? rows.map((row, index) => `
+        <tr>
+          <td>${index + 1}</td>
+          <td>${formatLongDate(row.dateIso)}</td>
+          <td>${row.throughput}</td>
+          <td>${renderSignalBadges(row.signal)}</td>
+        </tr>
+      `).join("") : `<tr><td colspan="4"><div class="empty-state">No throughput rows in the current period.</div></td></tr>`;
+    }
+
+    function renderThroughputXChart(rows, average, upperNaturalProcessLimit, lowerNaturalProcessLimit) {
+      const chartRows = rows.map((row, index) => ({
+        completionDateIso: row.dateIso,
+        throughput: row.throughput,
+        labelIndex: index + 1,
+        signal: row.signal
+      }));
+
+      drawSequenceChart({
+        svg: elements.throughput.plot,
+        rows: chartRows,
+        valueKey: "throughput",
+        lineColor: "#0a7a6d",
+        label: "Daily throughput",
+        pointTitle: (row) => `Day #${row.labelIndex} | ${formatLongDate(row.completionDateIso)} | ${row.throughput} items${formatSignalTitle(row.signal)}`,
+        pointAppearance: (row) => getSignalAppearance(row.signal),
+        unitSuffix: " items",
+        horizontalLines: [
+          { value: average, color: "#d66853", label: "Average" },
+          { value: upperNaturalProcessLimit, color: "#d7a441", label: "UNPL" },
+          { value: lowerNaturalProcessLimit, color: "#7561d0", label: "LNPL" }
+        ],
+        tickLabel: (row, index) => {
+          if (!chartRows.length) {
+            return "";
+          }
+          const step = Math.max(1, Math.floor(chartRows.length / 6));
+          return index === 0 || index === chartRows.length - 1 || index % step === 0 ? shortDate(row.completionDateIso) : "";
+        },
+        emptyMessage: "No visible throughput data for the current period."
+      });
+    }
+
+    function renderThroughputMrChart(rows, averageMovingRange, upperRangeLimit, lowerRangeLimit) {
+      const chartRows = rows.map((row, index) => ({
+        completionDateIso: row.dateIso,
+        movingRange: row.movingRange,
+        labelIndex: index + 1,
+        fromLabel: row.fromLabel,
+        toLabel: row.toLabel,
+        signal: row.signal
+      }));
+
+      drawSequenceChart({
+        svg: elements.throughput.mrPlot,
+        rows: chartRows,
+        valueKey: "movingRange",
+        lineColor: "#0a7a6d",
+        label: "Moving range",
+        pointTitle: (row) => `MR #${row.labelIndex} | ${row.fromLabel} -> ${row.toLabel} | ${row.movingRange} items${formatSignalTitle(row.signal)}`,
+        pointAppearance: (row) => getSignalAppearance(row.signal),
+        unitSuffix: " items",
+        horizontalLines: [
+          { value: averageMovingRange, color: "#d66853", label: "Avg MR" },
+          { value: upperRangeLimit, color: "#d7a441", label: "URL" },
+          { value: lowerRangeLimit, color: "#7561d0", label: "LRL" }
+        ],
+        tickLabel: (row, index) => {
+          if (!chartRows.length) {
+            return "";
+          }
+          const step = Math.max(1, Math.floor(chartRows.length / 6));
+          return index === 0 || index === chartRows.length - 1 || index % step === 0 ? shortDate(row.completionDateIso) : "";
+        },
+        emptyMessage: "Need at least two visible throughput points to draw the MR chart."
+      });
+    }
+
+    function renderXmrSummary(parsedRows, filteredRows, averageMovingRange, upperNaturalProcessLimit, lowerNaturalProcessLimit, upperRangeLimit, lowerRangeLimit) {
       if (!state.xmr.workbookName) {
         elements.xmr.summary.innerHTML = `<div class="summary-item"><strong>No file loaded</strong><span>Choose the Team Cycle Time for XMR workbook to populate this tab.</span></div>`;
         return;
@@ -1420,7 +1954,8 @@
         summaryCard("Mapped columns", `${state.xmr.dateColumn} and ${state.xmr.cycleColumn}`),
         summaryCard("Visible period", dates.length ? `${formatLongDate(dates[0])} to ${formatLongDate(dates[dates.length - 1])}` : "No rows in range"),
         summaryCard("Average moving range", averageMovingRange === null ? "Need at least two visible CTs" : `${averageMovingRange} days`),
-        summaryCard("Natural process limits", upperNaturalProcessLimit === null || lowerNaturalProcessLimit === null ? "Need at least two visible CTs" : `${formatLimit(lowerNaturalProcessLimit)} to ${formatLimit(upperNaturalProcessLimit)} days`)
+        summaryCard("X-chart limits", upperNaturalProcessLimit === null || lowerNaturalProcessLimit === null ? "Need at least two visible CTs" : `${formatLimit(lowerNaturalProcessLimit)} to ${formatLimit(upperNaturalProcessLimit)} days`),
+        summaryCard("MR-chart limits", upperRangeLimit === null || lowerRangeLimit === null ? "Need at least two visible CTs" : `${formatLimit(lowerRangeLimit)} to ${formatLimit(upperRangeLimit)} days`)
       ].join("");
     }
 
@@ -1431,16 +1966,18 @@
           <td>${index + 1}</td>
           <td>${formatLongDate(row.dateIso)}</td>
           <td>${row.cycleTime} days</td>
+          <td>${renderSignalBadges(row.signal)}</td>
           <td>${row.index}</td>
         </tr>
-      `).join("") : `<tr><td colspan="4"><div class="empty-state">No parsed XMR rows for the current sheet, column mapping, and date range.</div></td></tr>`;
+      `).join("") : `<tr><td colspan="5"><div class="empty-state">No parsed XMR rows for the current sheet, column mapping, and date range.</div></td></tr>`;
     }
 
     function renderXmrChart(filteredRows, average, upperNaturalProcessLimit, lowerNaturalProcessLimit) {
       const chartRows = filteredRows.map((row, index) => ({
         completionDateIso: row.dateIso,
         cycleTime: row.cycleTime,
-        labelIndex: index + 1
+        labelIndex: index + 1,
+        signal: row.signal
       }));
 
       drawSequenceChart({
@@ -1449,12 +1986,13 @@
         valueKey: "cycleTime",
         lineColor: "#0a7a6d",
         label: "Cycle time (days)",
-        pointTitle: (row) => `#${row.labelIndex} | ${formatLongDate(row.completionDateIso)} | ${row.cycleTime} days`,
+        pointTitle: (row) => `#${row.labelIndex} | ${formatLongDate(row.completionDateIso)} | ${row.cycleTime} days${formatSignalTitle(row.signal)}`,
         horizontalLines: [
           { value: average, color: "#d66853", label: "Average" },
           { value: upperNaturalProcessLimit, color: "#d7a441", label: "UNPL" },
           { value: lowerNaturalProcessLimit, color: "#7561d0", label: "LNPL" }
         ],
+        pointAppearance: (row) => getSignalAppearance(row.signal),
         tickLabel: (row, index) => {
           if (!chartRows.length) {
             return "";
@@ -1463,6 +2001,40 @@
           return index === 0 || index === chartRows.length - 1 || index % step === 0 ? shortDate(row.completionDateIso) : "";
         },
         emptyMessage: state.xmr.workbookName ? "No visible XMR data for the current mapping and period." : "Load the Team Cycle Time for XMR workbook to render the run chart."
+      });
+    }
+
+    function renderMrChart(movingRangeRows, averageMovingRange, upperRangeLimit, lowerRangeLimit) {
+      const chartRows = movingRangeRows.map((row, index) => ({
+        completionDateIso: row.dateIso,
+        movingRange: row.movingRange,
+        labelIndex: index + 1,
+        fromLabel: row.fromLabel,
+        toLabel: row.toLabel,
+        signal: row.signal
+      }));
+
+      drawSequenceChart({
+        svg: elements.xmr.mrPlot,
+        rows: chartRows,
+        valueKey: "movingRange",
+        lineColor: "#0a7a6d",
+        label: "Moving range",
+        pointTitle: (row) => `MR #${row.labelIndex} | ${row.fromLabel} -> ${row.toLabel} | ${row.movingRange} days${formatSignalTitle(row.signal)}`,
+        horizontalLines: [
+          { value: averageMovingRange, color: "#d66853", label: "Avg MR" },
+          { value: upperRangeLimit, color: "#d7a441", label: "URL" },
+          { value: lowerRangeLimit, color: "#7561d0", label: "LRL" }
+        ],
+        pointAppearance: (row) => getSignalAppearance(row.signal),
+        tickLabel: (row, index) => {
+          if (!chartRows.length) {
+            return "";
+          }
+          const step = Math.max(1, Math.floor(chartRows.length / 6));
+          return index === 0 || index === chartRows.length - 1 || index % step === 0 ? shortDate(row.completionDateIso) : "";
+        },
+        emptyMessage: state.xmr.workbookName ? "Need at least two visible CTs to draw the moving range chart." : "Load the Team Cycle Time for XMR workbook to render the MR chart."
       });
     }
 
@@ -1502,6 +2074,8 @@
         lineColor: config.lineColor,
         label: config.label,
         pointTitle: config.pointTitle,
+        pointAppearance: config.pointAppearance,
+        unitSuffix: config.unitSuffix,
         horizontalLines: config.horizontalLines,
         emptyMessage: config.emptyMessage,
         xPosition: (row, dimensions, bounds, index) => dimensions.padding.left + (index / bounds.maxIndex) * dimensions.innerWidth,
@@ -1543,7 +2117,8 @@
       const points = rows.map((row, index) => {
         const x = xScale(row, index);
         const y = yScale(Number(row[config.valueKey]));
-        return `<g><circle cx="${x}" cy="${y}" r="5.5" fill="${config.lineColor}" opacity="0.92"></circle><title>${config.pointTitle(row, index)}</title></g>`;
+        const appearance = config.pointAppearance ? config.pointAppearance(row, index) : getDefaultPointAppearance(config.lineColor);
+        return `<g><circle cx="${x}" cy="${y}" r="${appearance.radius}" fill="${appearance.fill}" stroke="${appearance.stroke}" stroke-width="${appearance.strokeWidth}" opacity="${appearance.opacity}"></circle><title>${config.pointTitle(row, index)}</title></g>`;
       }).join("");
       const labels = (config.xLabels || []).map((item) => {
         const index = typeof item.index === "number" ? item.index : rows.indexOf(item.row);
@@ -1553,7 +2128,7 @@
         const y = yScale(line.value);
         return `
           <line x1="${padding.left}" y1="${y}" x2="${width - padding.right}" y2="${y}" stroke="${line.color}" stroke-width="2.5" stroke-dasharray="10 6" />
-          <text x="${width - padding.right}" y="${y - 8}" text-anchor="end" fill="${line.color}" font-size="12">${line.label}: ${line.value}d</text>
+          <text x="${width - padding.right}" y="${y - 8}" text-anchor="end" fill="${line.color}" font-size="12">${line.label}: ${line.value}${config.unitSuffix || "d"}</text>
         `;
       }).join("");
 
@@ -1589,6 +2164,147 @@
       }
       const averageMovingRange = movingRanges.reduce((sum, value) => sum + value, 0) / movingRanges.length;
       return roundToOneDecimal(averageMovingRange);
+    }
+
+    function getMovingRangeRows(rows) {
+      if (rows.length < 2) {
+        return [];
+      }
+      const movingRangeRows = [];
+      for (let index = 1; index < rows.length; index += 1) {
+        movingRangeRows.push({
+          dateIso: rows[index].dateIso,
+          movingRange: Math.abs(rows[index].cycleTime - rows[index - 1].cycleTime),
+          fromLabel: formatLongDate(rows[index - 1].dateIso),
+          toLabel: formatLongDate(rows[index].dateIso)
+        });
+      }
+      return movingRangeRows;
+    }
+
+    function getSignalAnnotations(values, center, lowerLimit, upperLimit) {
+      const flags = values.map(() => new Set());
+      if (!values.length || center === null || lowerLimit === null || upperLimit === null) {
+        return values.map(() => createSignalMeta(new Set()));
+      }
+
+      values.forEach((value, index) => {
+        if (value > upperLimit || value < lowerLimit) {
+          flags[index].add("strong");
+        }
+      });
+
+      applyZoneRule(flags, values, center, lowerLimit, upperLimit, 3, 2, 2 / 3, "moderate");
+      applyZoneRule(flags, values, center, lowerLimit, upperLimit, 5, 3, 1 / 3, "weak");
+      applyRevisitingRule(flags, values, center);
+
+      return flags.map((flagSet) => createSignalMeta(flagSet));
+    }
+
+    function applyZoneRule(flags, values, center, lowerLimit, upperLimit, windowSize, thresholdCount, zoneFraction, label) {
+      const upperThreshold = center + (upperLimit - center) * zoneFraction;
+      const lowerThreshold = center + (lowerLimit - center) * zoneFraction;
+
+      for (let start = 0; start <= values.length - windowSize; start += 1) {
+        const upperMatches = [];
+        const lowerMatches = [];
+        for (let offset = 0; offset < windowSize; offset += 1) {
+          const index = start + offset;
+          const value = values[index];
+          if (value > upperThreshold) {
+            upperMatches.push(index);
+          }
+          if (value < lowerThreshold) {
+            lowerMatches.push(index);
+          }
+        }
+        if (upperMatches.length >= thresholdCount) {
+          upperMatches.forEach((index) => flags[index].add(label));
+        }
+        if (lowerMatches.length >= thresholdCount) {
+          lowerMatches.forEach((index) => flags[index].add(label));
+        }
+      }
+    }
+
+    function applyRevisitingRule(flags, values, center) {
+      let runStart = 0;
+      let runDirection = getRunDirection(values[0], center);
+      for (let index = 1; index <= values.length; index += 1) {
+        const direction = index < values.length ? getRunDirection(values[index], center) : 0;
+        if (direction !== runDirection || direction === 0) {
+          if (runDirection !== 0 && index - runStart >= 8) {
+            for (let runIndex = runStart; runIndex < index; runIndex += 1) {
+              flags[runIndex].add("revisiting");
+            }
+          }
+          runStart = index;
+          runDirection = direction;
+        }
+      }
+    }
+
+    function getRunDirection(value, center) {
+      if (value > center) {
+        return 1;
+      }
+      if (value < center) {
+        return -1;
+      }
+      return 0;
+    }
+
+    function createSignalMeta(flagSet) {
+      const labels = ["strong", "moderate", "weak", "revisiting"].filter((label) => flagSet.has(label));
+      return {
+        labels,
+        primary: labels[0] || "none"
+      };
+    }
+
+    function getSignalAppearance(signal) {
+      switch (signal.primary) {
+        case "strong":
+          return { radius: 7, fill: "#d66853", stroke: "#8c3f31", strokeWidth: 3, opacity: 0.96 };
+        case "moderate":
+          return { radius: 6.5, fill: "#d7a441", stroke: "#8a6310", strokeWidth: 3, opacity: 0.96 };
+        case "weak":
+          return { radius: 6.5, fill: "#7561d0", stroke: "#4f43a1", strokeWidth: 3, opacity: 0.96 };
+        case "revisiting":
+          return { radius: 6.5, fill: "#0a7a6d", stroke: "#06594f", strokeWidth: 4, opacity: 0.96 };
+        default:
+          return getDefaultPointAppearance("#0a7a6d");
+      }
+    }
+
+    function getDefaultPointAppearance(fill) {
+      return { radius: 5.5, fill, stroke: "rgba(255,255,255,0.75)", strokeWidth: 1.5, opacity: 0.92 };
+    }
+
+    function formatSignalTitle(signal) {
+      return signal && signal.labels.length ? ` | Signals: ${signal.labels.map(formatSignalLabel).join(", ")}` : "";
+    }
+
+    function renderSignalBadges(signal) {
+      if (!signal || !signal.labels.length) {
+        return `<div class="signal-badges"><span class="signal-badge none">None</span></div>`;
+      }
+      return `<div class="signal-badges">${signal.labels.map((label) => `<span class="signal-badge ${label}">${formatSignalLabel(label)}</span>`).join("")}</div>`;
+    }
+
+    function formatSignalLabel(label) {
+      switch (label) {
+        case "strong":
+          return "Strong";
+        case "moderate":
+          return "Moderate";
+        case "weak":
+          return "Weak";
+        case "revisiting":
+          return "Revisiting";
+        default:
+          return "None";
+      }
     }
 
     function roundToOneDecimal(value) {
@@ -1641,6 +2357,20 @@
         return toInputDate(parsed);
       }
       return parsePolishDate(text);
+    }
+
+    function parseDayMonthDotDate(text) {
+      const match = String(text || "").trim().match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+      if (!match) {
+        return "";
+      }
+      const day = Number(match[1]);
+      const month = Number(match[2]);
+      const year = Number(match[3]);
+      if (!Number.isInteger(day) || !Number.isInteger(month) || !Number.isInteger(year)) {
+        return "";
+      }
+      return toInputDate(new Date(year, month - 1, day));
     }
 
     function parseFlexibleNumber(value) {
