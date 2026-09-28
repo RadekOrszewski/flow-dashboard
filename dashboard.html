@@ -1,0 +1,1093 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lead Time Dashboard</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5efe4;
+      --surface: rgba(255, 252, 247, 0.88);
+      --surface-strong: #fffaf1;
+      --ink: #1f2a33;
+      --muted: #5f6b73;
+      --line: rgba(31, 42, 51, 0.12);
+      --accent: #0a7a6d;
+      --accent-soft: rgba(10, 122, 109, 0.12);
+      --accent-2: #d66853;
+      --accent-3: #d7a441;
+      --shadow: 0 24px 60px rgba(31, 42, 51, 0.12);
+      --radius: 22px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", "Trebuchet MS", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(214, 104, 83, 0.16), transparent 28%),
+        radial-gradient(circle at right 20%, rgba(10, 122, 109, 0.14), transparent 34%),
+        linear-gradient(180deg, #f9f4eb 0%, var(--bg) 55%, #ece5d8 100%);
+    }
+
+    .shell {
+      max-width: 1380px;
+      margin: 0 auto;
+      padding: 28px;
+    }
+
+    .hero {
+      display: grid;
+      gap: 18px;
+      margin-bottom: 24px;
+      padding: 28px;
+      border: 1px solid rgba(255, 255, 255, 0.65);
+      border-radius: 30px;
+      background: linear-gradient(140deg, rgba(255, 250, 241, 0.92), rgba(248, 241, 232, 0.8));
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: auto -60px -80px auto;
+      width: 240px;
+      height: 240px;
+      border-radius: 50%;
+      background: rgba(10, 122, 109, 0.08);
+    }
+
+    .eyebrow {
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      font-size: 0.78rem;
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(2rem, 4vw, 3.4rem);
+      line-height: 1.05;
+      max-width: 10ch;
+    }
+
+    .hero p {
+      margin: 0;
+      max-width: 70ch;
+      color: var(--muted);
+      font-size: 1rem;
+      line-height: 1.6;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+      gap: 22px;
+      align-items: start;
+    }
+
+    .panel {
+      border: 1px solid rgba(255, 255, 255, 0.72);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+    }
+
+    .sidebar {
+      padding: 20px;
+      position: sticky;
+      top: 20px;
+    }
+
+    .section-title {
+      margin: 0 0 14px;
+      font-size: 1rem;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+    }
+
+    .stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .field-grid {
+      display: grid;
+      gap: 12px;
+    }
+
+    label {
+      display: grid;
+      gap: 6px;
+      font-size: 0.88rem;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    input,
+    select,
+    button {
+      font: inherit;
+    }
+
+    input,
+    select {
+      width: 100%;
+      padding: 11px 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(31, 42, 51, 0.14);
+      background: rgba(255, 255, 255, 0.95);
+      color: var(--ink);
+    }
+
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 999px;
+      padding: 10px 16px;
+      cursor: pointer;
+      transition: transform 140ms ease, opacity 140ms ease, box-shadow 140ms ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 24px rgba(31, 42, 51, 0.12);
+    }
+
+    .primary {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .secondary {
+      background: rgba(31, 42, 51, 0.08);
+      color: var(--ink);
+    }
+
+    .ghost {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid rgba(31, 42, 51, 0.12);
+    }
+
+    .main {
+      display: grid;
+      gap: 22px;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .stat-card {
+      padding: 18px;
+      min-height: 120px;
+      display: grid;
+      align-content: start;
+      gap: 10px;
+    }
+
+    .stat-card .label {
+      font-size: 0.85rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 700;
+    }
+
+    .stat-card .value {
+      font-size: clamp(1.7rem, 3vw, 2.5rem);
+      font-weight: 800;
+    }
+
+    .stat-card .sub {
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .content-card {
+      padding: 20px;
+    }
+
+    .chart-wrap {
+      display: grid;
+      gap: 12px;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .legend-swatch {
+      width: 16px;
+      height: 3px;
+      border-radius: 999px;
+    }
+
+    .plot {
+      width: 100%;
+      min-height: 420px;
+      border-radius: 18px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.76), rgba(255,255,255,0.94));
+      border: 1px solid rgba(31, 42, 51, 0.08);
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 22px;
+    }
+
+    .forecast-list,
+    .summary-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .forecast-item,
+    .summary-item {
+      padding: 14px 16px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid rgba(31, 42, 51, 0.08);
+    }
+
+    .forecast-item strong,
+    .summary-item strong {
+      display: block;
+      font-size: 1rem;
+      margin-bottom: 4px;
+    }
+
+    .summary-item span,
+    .forecast-item span,
+    .note,
+    .muted {
+      color: var(--muted);
+    }
+
+    .table-wrap {
+      overflow: auto;
+      border-radius: 16px;
+      border: 1px solid rgba(31, 42, 51, 0.08);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 760px;
+      background: rgba(255, 255, 255, 0.92);
+    }
+
+    th,
+    td {
+      padding: 12px 14px;
+      text-align: left;
+      border-bottom: 1px solid rgba(31, 42, 51, 0.08);
+      font-size: 0.94rem;
+    }
+
+    th {
+      color: var(--muted);
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      background: rgba(245, 239, 228, 0.82);
+      position: sticky;
+      top: 0;
+    }
+
+    tr.excluded {
+      opacity: 0.45;
+      text-decoration: line-through;
+    }
+
+    .row-action {
+      padding: 7px 12px;
+      border-radius: 999px;
+      background: rgba(214, 104, 83, 0.12);
+      color: #8c3f31;
+      border: 1px solid rgba(214, 104, 83, 0.2);
+    }
+
+    .row-action.restore {
+      background: rgba(10, 122, 109, 0.12);
+      color: #06594f;
+      border-color: rgba(10, 122, 109, 0.2);
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 0.82rem;
+      font-weight: 700;
+    }
+
+    .message {
+      min-height: 1.2em;
+      color: var(--accent);
+      font-size: 0.92rem;
+      font-weight: 600;
+    }
+
+    @media (max-width: 1080px) {
+      .layout,
+      .split {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        position: static;
+      }
+
+      .stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 720px) {
+      .shell {
+        padding: 16px;
+      }
+
+      .hero,
+      .sidebar,
+      .content-card,
+      .stat-card {
+        padding: 16px;
+      }
+
+      .stats {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <section class="hero">
+      <div class="eyebrow">Lead Times 2024-25</div>
+      <h1>Forecast lead times with controllable history.</h1>
+      <p>
+        Filter by size, narrow the historical period, add new completions, exclude noisy outliers,
+        and immediately refresh the percentile-based forecast view.
+      </p>
+    </section>
+
+    <div class="layout">
+      <aside class="panel sidebar">
+        <div class="stack">
+          <section>
+            <h2 class="section-title">Filters</h2>
+            <div class="field-grid">
+              <label>
+                Size
+                <select id="sizeFilter"></select>
+              </label>
+              <label>
+                Period start
+                <input id="startDate" type="date">
+              </label>
+              <label>
+                Period end
+                <input id="endDate" type="date">
+              </label>
+              <label>
+                Forecast from
+                <input id="forecastDate" type="date">
+              </label>
+            </div>
+            <div class="button-row" style="margin-top: 12px;">
+              <button class="secondary" id="resetFilters" type="button">Reset filters</button>
+              <button class="ghost" id="restoreAll" type="button">Restore all data</button>
+            </div>
+          </section>
+
+          <section>
+            <h2 class="section-title">Add completion</h2>
+            <div class="field-grid">
+              <label>
+                Size
+                <select id="newSize"></select>
+              </label>
+              <label>
+                Completion date
+                <input id="newDate" type="date">
+              </label>
+              <label>
+                Lead time in days
+                <input id="newLeadTime" type="number" min="1" step="1" placeholder="Required for percentile calculations">
+              </label>
+            </div>
+            <div class="button-row" style="margin-top: 12px;">
+              <button class="primary" id="addItem" type="button">Add item</button>
+            </div>
+            <div class="message" id="formMessage"></div>
+          </section>
+
+          <section>
+            <h2 class="section-title">Selection snapshot</h2>
+            <div class="summary-list" id="selectionSummary"></div>
+          </section>
+        </div>
+      </aside>
+
+      <main class="main">
+        <section class="stats">
+          <article class="panel stat-card">
+            <div class="label">P50 Lead Time</div>
+            <div class="value" id="p50Value">-</div>
+            <div class="sub" id="p50Date">-</div>
+          </article>
+          <article class="panel stat-card">
+            <div class="label">P85 Lead Time</div>
+            <div class="value" id="p85Value">-</div>
+            <div class="sub" id="p85Date">-</div>
+          </article>
+          <article class="panel stat-card">
+            <div class="label">P98 Lead Time</div>
+            <div class="value" id="p98Value">-</div>
+            <div class="sub" id="p98Date">-</div>
+          </article>
+          <article class="panel stat-card">
+            <div class="label">Active Dataset</div>
+            <div class="value" id="activeCount">-</div>
+            <div class="sub" id="removedCount">-</div>
+          </article>
+        </section>
+
+        <section class="panel content-card chart-wrap">
+          <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start; flex-wrap:wrap;">
+            <div>
+              <h2 class="section-title" style="margin-bottom:6px;">Lead time distribution over completion dates</h2>
+              <div class="note">Points reflect the filtered, currently active dataset. Horizontal guides show selected percentiles.</div>
+            </div>
+            <div class="pill" id="selectionPill">Awaiting selection</div>
+          </div>
+          <div class="legend">
+            <span class="legend-item"><span class="legend-swatch" style="background: var(--accent);"></span>Lead time</span>
+            <span class="legend-item"><span class="legend-swatch" style="background: var(--accent-2);"></span>P50</span>
+            <span class="legend-item"><span class="legend-swatch" style="background: var(--accent-3);"></span>P85</span>
+            <span class="legend-item"><span class="legend-swatch" style="background: #7561d0;"></span>P98</span>
+          </div>
+          <svg class="plot" id="plot" viewBox="0 0 960 420" preserveAspectRatio="xMidYMid meet" aria-label="Lead time chart"></svg>
+        </section>
+
+        <section class="split">
+          <section class="panel content-card">
+            <h2 class="section-title">Forecast output</h2>
+            <div class="forecast-list" id="forecastList"></div>
+          </section>
+
+          <section class="panel content-card">
+            <h2 class="section-title">Usage notes</h2>
+            <div class="summary-list">
+              <div class="summary-item">
+                <strong>Percentiles use the active subset.</strong>
+                <span>Changing size, dates, additions, or exclusions recalculates the forecast immediately.</span>
+              </div>
+              <div class="summary-item">
+                <strong>Outliers are manually controlled.</strong>
+                <span>Use the exclude action in the table to remove a point from calculations, then restore all when needed.</span>
+              </div>
+              <div class="summary-item">
+                <strong>Added rows stay local.</strong>
+                <span>The dashboard keeps your manual edits in browser storage. It does not write back to the Excel file.</span>
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <section class="panel content-card">
+          <div style="display:flex; justify-content:space-between; gap:12px; align-items:flex-start; flex-wrap:wrap; margin-bottom:14px;">
+            <div>
+              <h2 class="section-title" style="margin-bottom:6px;">Detailed records</h2>
+              <div class="note">The table shows the filtered history. Excluded rows remain visible for auditability.</div>
+            </div>
+            <div class="pill" id="tableSummary">0 rows</div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Status</th>
+                  <th>Completion date</th>
+                  <th>Size</th>
+                  <th>Lead time</th>
+                  <th>Source</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="recordsBody"></tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = "lead-time-dashboard-state-v1";
+    const RAW_DATA = [
+      { completionDate: "15 Lipca 2024", size: "S", leadTime: 49 },
+      { completionDate: "22 Sierpnia 2024", size: "S", leadTime: 48 },
+      { completionDate: "10 Września 2024", size: "S", leadTime: 87 },
+      { completionDate: "25 Września 2024", size: "M", leadTime: 57 },
+      { completionDate: "5 Października 2024", size: "M", leadTime: 148 },
+      { completionDate: "14 Października 2024", size: "S", leadTime: 53 },
+      { completionDate: "28 Października 2024", size: "S", leadTime: 45 },
+      { completionDate: "18 Listopada 2024", size: "M", leadTime: 145 },
+      { completionDate: "4 Grudnia 2024", size: "L", leadTime: 105 },
+      { completionDate: "8 Stycznia 2025", size: "S", leadTime: 5 },
+      { completionDate: "20 Stycznia 2025", size: "L", leadTime: 163 },
+      { completionDate: "14 Lutego 2025", size: "S", leadTime: 43 },
+      { completionDate: "26 Lutego 2025", size: "M", leadTime: 415 },
+      { completionDate: "15 Marca 2025", size: "L", leadTime: 123 },
+      { completionDate: "10 Kwietnia 2025", size: "M", leadTime: 103 },
+      { completionDate: "5 Maja 2025", size: "L", leadTime: 104 },
+      { completionDate: "12 Czerwca 2025", size: "L", leadTime: 302 },
+      { completionDate: "25 Czerwca 2025", size: "L", leadTime: 158 },
+      { completionDate: "2 Lipca 2025", size: "L", leadTime: 98 },
+      { completionDate: "11 Lipca 2025", size: "S", leadTime: 52 },
+      { completionDate: "18 Lipca 2025", size: "M", leadTime: 95 },
+      { completionDate: "29 Lipca 2025", size: "S", leadTime: 70 },
+      { completionDate: "3 Sierpnia 2025", size: "M", leadTime: 95 },
+      { completionDate: "14 Sierpnia 2025", size: "M", leadTime: 101 },
+      { completionDate: "21 Sierpnia 2025", size: "M", leadTime: 57 },
+      { completionDate: "29 Sierpnia 2025", size: "M", leadTime: 57 },
+      { completionDate: "8 Września 2025", size: "S", leadTime: 53 },
+      { completionDate: "22 Września 2025", size: "L", leadTime: 137 },
+      { completionDate: "4 Października 2025", size: "S", leadTime: 73 },
+      { completionDate: "12 Października 2025", size: "M", leadTime: 60 },
+      { completionDate: "19 Października 2025", size: "S", leadTime: 126 },
+      { completionDate: "27 Października 2025", size: "M", leadTime: 57 },
+      { completionDate: "5 Listopada 2025", size: "L", leadTime: 124 },
+      { completionDate: "15 Listopada 2025", size: "M", leadTime: 75 },
+      { completionDate: "25 Listopada 2025", size: "M", leadTime: 89 },
+      { completionDate: "10 Grudnia 2025", size: "S", leadTime: 44 }
+    ];
+
+    const MONTHS = {
+      stycznia: 0,
+      lutego: 1,
+      marca: 2,
+      kwietnia: 3,
+      maja: 4,
+      czerwca: 5,
+      lipca: 6,
+      sierpnia: 7,
+      wrzesnia: 8,
+      pazdziernika: 9,
+      listopada: 10,
+      grudnia: 11
+    };
+
+    const state = {
+      entries: loadState(),
+      filters: {
+        size: "ALL",
+        startDate: "",
+        endDate: "",
+        forecastDate: toInputDate(new Date())
+      }
+    };
+
+    const elements = {
+      sizeFilter: document.getElementById("sizeFilter"),
+      startDate: document.getElementById("startDate"),
+      endDate: document.getElementById("endDate"),
+      forecastDate: document.getElementById("forecastDate"),
+      resetFilters: document.getElementById("resetFilters"),
+      restoreAll: document.getElementById("restoreAll"),
+      newSize: document.getElementById("newSize"),
+      newDate: document.getElementById("newDate"),
+      newLeadTime: document.getElementById("newLeadTime"),
+      addItem: document.getElementById("addItem"),
+      formMessage: document.getElementById("formMessage"),
+      selectionSummary: document.getElementById("selectionSummary"),
+      p50Value: document.getElementById("p50Value"),
+      p50Date: document.getElementById("p50Date"),
+      p85Value: document.getElementById("p85Value"),
+      p85Date: document.getElementById("p85Date"),
+      p98Value: document.getElementById("p98Value"),
+      p98Date: document.getElementById("p98Date"),
+      activeCount: document.getElementById("activeCount"),
+      removedCount: document.getElementById("removedCount"),
+      selectionPill: document.getElementById("selectionPill"),
+      forecastList: document.getElementById("forecastList"),
+      tableSummary: document.getElementById("tableSummary"),
+      recordsBody: document.getElementById("recordsBody"),
+      plot: document.getElementById("plot")
+    };
+
+    init();
+
+    function init() {
+      hydrateEntries();
+      buildSizeOptions();
+      bindInputs();
+      primeDefaultPeriod();
+      render();
+    }
+
+    function loadState() {
+      const seeded = RAW_DATA.map((item, index) => ({
+        id: `seed-${index + 1}`,
+        completionDateText: item.completionDate,
+        completionDateIso: parsePolishDate(item.completionDate),
+        size: item.size,
+        leadTime: Number(item.leadTime),
+        source: "Workbook",
+        excluded: false
+      }));
+
+      try {
+        const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+        if (!stored || !Array.isArray(stored.entries)) {
+          return seeded;
+        }
+
+        const byId = new Map(stored.entries.map((entry) => [entry.id, entry]));
+        return seeded.map((entry) => {
+          const override = byId.get(entry.id);
+          return override ? { ...entry, excluded: Boolean(override.excluded) } : entry;
+        }).concat(
+          stored.entries
+            .filter((entry) => String(entry.id).startsWith("manual-"))
+            .map((entry) => ({
+              ...entry,
+              excluded: Boolean(entry.excluded),
+              source: "Manual"
+            }))
+        );
+      } catch {
+        return seeded;
+      }
+    }
+
+    function hydrateEntries() {
+      state.entries = state.entries
+        .filter((entry) => entry.completionDateIso && Number.isFinite(Number(entry.leadTime)))
+        .map((entry) => ({
+          ...entry,
+          leadTime: Number(entry.leadTime)
+        }))
+        .sort((left, right) => left.completionDateIso.localeCompare(right.completionDateIso));
+    }
+
+    function saveState() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ entries: state.entries }));
+    }
+
+    function buildSizeOptions() {
+      const sizes = Array.from(new Set(state.entries.map((entry) => entry.size))).sort();
+      const allOptions = ['<option value="ALL">All sizes</option>']
+        .concat(sizes.map((size) => `<option value="${size}">${size}</option>`))
+        .join("");
+      const manualOptions = sizes.map((size) => `<option value="${size}">${size}</option>`).join("");
+      elements.sizeFilter.innerHTML = allOptions;
+      elements.newSize.innerHTML = manualOptions;
+      elements.sizeFilter.value = state.filters.size;
+      if (!elements.newSize.value && sizes[0]) {
+        elements.newSize.value = sizes[0];
+      }
+    }
+
+    function bindInputs() {
+      elements.sizeFilter.addEventListener("change", () => {
+        state.filters.size = elements.sizeFilter.value;
+        render();
+      });
+      elements.startDate.addEventListener("change", () => {
+        state.filters.startDate = elements.startDate.value;
+        render();
+      });
+      elements.endDate.addEventListener("change", () => {
+        state.filters.endDate = elements.endDate.value;
+        render();
+      });
+      elements.forecastDate.addEventListener("change", () => {
+        state.filters.forecastDate = elements.forecastDate.value || toInputDate(new Date());
+        render();
+      });
+      elements.resetFilters.addEventListener("click", resetFilters);
+      elements.restoreAll.addEventListener("click", restoreAll);
+      elements.addItem.addEventListener("click", addItem);
+      elements.recordsBody.addEventListener("click", handleTableAction);
+    }
+
+    function primeDefaultPeriod() {
+      const dates = state.entries.map((entry) => entry.completionDateIso).sort();
+      if (!dates.length) {
+        return;
+      }
+      state.filters.startDate = dates[0];
+      state.filters.endDate = dates[dates.length - 1];
+      elements.startDate.value = state.filters.startDate;
+      elements.endDate.value = state.filters.endDate;
+      elements.forecastDate.value = state.filters.forecastDate;
+    }
+
+    function resetFilters() {
+      state.filters.size = "ALL";
+      primeDefaultPeriod();
+      elements.sizeFilter.value = state.filters.size;
+      elements.startDate.value = state.filters.startDate;
+      elements.endDate.value = state.filters.endDate;
+      elements.forecastDate.value = state.filters.forecastDate;
+      render();
+    }
+
+    function restoreAll() {
+      state.entries = state.entries.map((entry) => ({ ...entry, excluded: false }));
+      saveState();
+      setMessage("All excluded rows were restored.");
+      render();
+    }
+
+    function addItem() {
+      const size = elements.newSize.value;
+      const completionDateIso = elements.newDate.value;
+      const leadTime = Number(elements.newLeadTime.value);
+
+      if (!size || !completionDateIso || !Number.isFinite(leadTime) || leadTime <= 0) {
+        setMessage("Provide size, completion date, and a positive lead time.");
+        return;
+      }
+
+      state.entries.push({
+        id: `manual-${Date.now()}`,
+        completionDateText: formatDateForDisplay(completionDateIso),
+        completionDateIso,
+        size,
+        leadTime,
+        source: "Manual",
+        excluded: false
+      });
+      hydrateEntries();
+      saveState();
+      buildSizeOptions();
+      if (!state.filters.startDate || completionDateIso < state.filters.startDate) {
+        state.filters.startDate = completionDateIso;
+      }
+      if (!state.filters.endDate || completionDateIso > state.filters.endDate) {
+        state.filters.endDate = completionDateIso;
+      }
+      syncFilterBounds();
+      elements.newDate.value = "";
+      elements.newLeadTime.value = "";
+      setMessage("Item added to the local dashboard dataset.");
+      render();
+    }
+
+    function syncFilterBounds() {
+      const dates = state.entries.map((entry) => entry.completionDateIso).sort();
+      if (!dates.length) {
+        return;
+      }
+      if (!state.filters.startDate || state.filters.startDate > dates[dates.length - 1]) {
+        state.filters.startDate = dates[0];
+      }
+      if (!state.filters.endDate || state.filters.endDate < dates[0]) {
+        state.filters.endDate = dates[dates.length - 1];
+      }
+      elements.startDate.value = state.filters.startDate;
+      elements.endDate.value = state.filters.endDate;
+    }
+
+    function handleTableAction(event) {
+      const button = event.target.closest("button[data-id]");
+      if (!button) {
+        return;
+      }
+      const entry = state.entries.find((item) => item.id === button.dataset.id);
+      if (!entry) {
+        return;
+      }
+      entry.excluded = !entry.excluded;
+      saveState();
+      render();
+    }
+
+    function render() {
+      const filtered = getFilteredEntries();
+      const active = filtered.filter((entry) => !entry.excluded);
+      const percentiles = {
+        p50: percentile(active.map((entry) => entry.leadTime), 0.5),
+        p85: percentile(active.map((entry) => entry.leadTime), 0.85),
+        p98: percentile(active.map((entry) => entry.leadTime), 0.98)
+      };
+
+      renderStats(filtered, active, percentiles);
+      renderForecasts(percentiles, active);
+      renderSelectionSummary(filtered, active);
+      renderTable(filtered);
+      renderChart(active, percentiles);
+    }
+
+    function getFilteredEntries() {
+      return state.entries.filter((entry) => {
+        const sizePass = state.filters.size === "ALL" || entry.size === state.filters.size;
+        const startPass = !state.filters.startDate || entry.completionDateIso >= state.filters.startDate;
+        const endPass = !state.filters.endDate || entry.completionDateIso <= state.filters.endDate;
+        return sizePass && startPass && endPass;
+      });
+    }
+
+    function renderStats(filtered, active, percentiles) {
+      const forecastBase = state.filters.forecastDate || toInputDate(new Date());
+      updateStat(elements.p50Value, elements.p50Date, percentiles.p50, forecastBase);
+      updateStat(elements.p85Value, elements.p85Date, percentiles.p85, forecastBase);
+      updateStat(elements.p98Value, elements.p98Date, percentiles.p98, forecastBase);
+
+      elements.activeCount.textContent = String(active.length);
+      const excludedCount = filtered.length - active.length;
+      elements.removedCount.textContent = `${excludedCount} excluded from ${filtered.length} filtered rows`;
+      elements.selectionPill.textContent = `${state.filters.size === "ALL" ? "All sizes" : state.filters.size} | ${active.length} active rows`;
+    }
+
+    function updateStat(valueNode, dateNode, days, forecastBase) {
+      if (days === null) {
+        valueNode.textContent = "-";
+        dateNode.textContent = "No active data in selection";
+        return;
+      }
+      valueNode.textContent = `${days} d`;
+      dateNode.textContent = `Forecast completion: ${formatLongDate(addDays(forecastBase, days))}`;
+    }
+
+    function renderForecasts(percentiles, active) {
+      const baseDate = state.filters.forecastDate || toInputDate(new Date());
+      const items = [
+        { label: "Median scenario", percentile: "P50", value: percentiles.p50, tone: "Balanced expectation for routine delivery." },
+        { label: "Planning buffer", percentile: "P85", value: percentiles.p85, tone: "Useful when you want a stronger confidence level." },
+        { label: "Near worst-case", percentile: "P98", value: percentiles.p98, tone: "Captures an aggressive risk buffer for exceptional delays." }
+      ];
+      elements.forecastList.innerHTML = items.map((item) => {
+        if (item.value === null) {
+          return `<div class="forecast-item"><strong>${item.percentile} unavailable</strong><span>Add or restore data inside the selected period to generate this forecast.</span></div>`;
+        }
+        return `<div class="forecast-item"><strong>${item.label}: ${item.value} days</strong><span>${item.tone} Forecast completion from ${formatLongDate(baseDate)}: ${formatLongDate(addDays(baseDate, item.value))}. Based on ${active.length} active records.</span></div>`;
+      }).join("");
+    }
+
+    function renderSelectionSummary(filtered, active) {
+      const leadTimes = active.map((entry) => entry.leadTime);
+      const minLead = leadTimes.length ? Math.min(...leadTimes) : null;
+      const maxLead = leadTimes.length ? Math.max(...leadTimes) : null;
+      const dates = filtered.map((entry) => entry.completionDateIso).sort();
+      elements.selectionSummary.innerHTML = [
+        summaryCard("Filtered period", dates.length ? `${formatLongDate(dates[0])} to ${formatLongDate(dates[dates.length - 1])}` : "No rows in view"),
+        summaryCard("Lead time range", minLead === null ? "No active rows" : `${minLead} to ${maxLead} days`),
+        summaryCard("Manual additions", `${state.entries.filter((entry) => entry.source === "Manual").length} rows`)
+      ].join("");
+    }
+
+    function summaryCard(title, text) {
+      return `<div class="summary-item"><strong>${title}</strong><span>${text}</span></div>`;
+    }
+
+    function renderTable(filtered) {
+      elements.tableSummary.textContent = `${filtered.length} filtered rows`;
+      elements.recordsBody.innerHTML = filtered.map((entry) => {
+        const actionLabel = entry.excluded ? "Restore" : "Exclude";
+        const actionClass = entry.excluded ? "row-action restore" : "row-action";
+        return `
+          <tr class="${entry.excluded ? "excluded" : ""}">
+            <td>${entry.excluded ? "Excluded" : "Active"}</td>
+            <td>${formatLongDate(entry.completionDateIso)}</td>
+            <td>${entry.size}</td>
+            <td>${entry.leadTime} days</td>
+            <td>${entry.source}</td>
+            <td><button type="button" class="${actionClass}" data-id="${entry.id}">${actionLabel}</button></td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    function renderChart(active, percentiles) {
+      const svg = elements.plot;
+      const width = 960;
+      const height = 420;
+      const padding = { top: 24, right: 24, bottom: 60, left: 64 };
+      const innerWidth = width - padding.left - padding.right;
+      const innerHeight = height - padding.top - padding.bottom;
+      const allDates = active.map((entry) => parseIsoDate(entry.completionDateIso).getTime());
+      const allLeadTimes = active.map((entry) => entry.leadTime);
+
+      if (!active.length) {
+        svg.innerHTML = `<rect x="0" y="0" width="${width}" height="${height}" fill="transparent"></rect><text x="50%" y="50%" text-anchor="middle" fill="#5f6b73" font-size="20">No active data for the current selection.</text>`;
+        return;
+      }
+
+      const minDate = Math.min(...allDates);
+      const maxDate = Math.max(...allDates);
+      const maxLead = Math.max(...allLeadTimes, percentiles.p98 || 0);
+      const safeDateSpan = Math.max(maxDate - minDate, 24 * 60 * 60 * 1000);
+      const safeLeadMax = Math.max(maxLead, 10);
+
+      const xScale = (timestamp) => padding.left + ((timestamp - minDate) / safeDateSpan) * innerWidth;
+      const yScale = (value) => padding.top + innerHeight - (value / safeLeadMax) * innerHeight;
+
+      const grid = [];
+      for (let step = 0; step <= 4; step += 1) {
+        const yValue = Math.round((safeLeadMax / 4) * step);
+        const y = yScale(yValue);
+        grid.push(`<line x1="${padding.left}" y1="${y}" x2="${width - padding.right}" y2="${y}" stroke="rgba(31,42,51,0.12)" stroke-dasharray="4 6" />`);
+        grid.push(`<text x="${padding.left - 12}" y="${y + 5}" text-anchor="end" fill="#5f6b73" font-size="12">${yValue}</text>`);
+      }
+
+      const xTicks = active.filter((_, index) => index === 0 || index === active.length - 1 || index % Math.max(1, Math.floor(active.length / 5)) === 0);
+      const xLabels = xTicks.map((entry) => {
+        const x = xScale(parseIsoDate(entry.completionDateIso).getTime());
+        return `<text x="${x}" y="${height - 20}" text-anchor="middle" fill="#5f6b73" font-size="12">${shortDate(entry.completionDateIso)}</text>`;
+      });
+
+      const lines = [
+        percentileLine(percentiles.p50, "var(--accent-2)", "P50"),
+        percentileLine(percentiles.p85, "var(--accent-3)", "P85"),
+        percentileLine(percentiles.p98, "#7561d0", "P98")
+      ].join("");
+
+      const points = active.map((entry) => {
+        const x = xScale(Date.parse(entry.completionDateIso));
+        const y = yScale(entry.leadTime);
+        return `<g><circle cx="${x}" cy="${y}" r="6" fill="#0a7a6d" opacity="0.9"></circle><title>${formatLongDate(entry.completionDateIso)} | ${entry.size} | ${entry.leadTime} days</title></g>`;
+      }).join("");
+
+      svg.innerHTML = `
+        <rect x="0" y="0" width="${width}" height="${height}" rx="18" fill="transparent"></rect>
+        ${grid.join("")}
+        <line x1="${padding.left}" y1="${height - padding.bottom}" x2="${width - padding.right}" y2="${height - padding.bottom}" stroke="rgba(31,42,51,0.18)" />
+        <line x1="${padding.left}" y1="${padding.top}" x2="${padding.left}" y2="${height - padding.bottom}" stroke="rgba(31,42,51,0.18)" />
+        ${lines}
+        ${points}
+        ${xLabels.join("")}
+        <text x="${padding.left}" y="${padding.top - 8}" fill="#5f6b73" font-size="12">Lead time (days)</text>
+      `;
+
+      function percentileLine(value, color, label) {
+        if (value === null) {
+          return "";
+        }
+        const y = yScale(value);
+        return `
+          <line x1="${padding.left}" y1="${y}" x2="${width - padding.right}" y2="${y}" stroke="${color}" stroke-width="2.5" stroke-dasharray="10 6" />
+          <text x="${width - padding.right}" y="${y - 8}" text-anchor="end" fill="${color}" font-size="12">${label}: ${value}d</text>
+        `;
+      }
+    }
+
+    function percentile(values, ratio) {
+      if (!values.length) {
+        return null;
+      }
+      const sorted = [...values].sort((left, right) => left - right);
+      const index = Math.ceil(sorted.length * ratio) - 1;
+      return sorted[Math.max(0, Math.min(index, sorted.length - 1))];
+    }
+
+    function parsePolishDate(text) {
+      const parts = String(text).trim().split(/\s+/u);
+      if (parts.length !== 3) {
+        return "";
+      }
+      const day = Number(parts[0]);
+      const month = MONTHS[normalizeMonth(parts[1])];
+      const year = Number(parts[2]);
+      if (!Number.isInteger(day) || month === undefined || !Number.isInteger(year)) {
+        return "";
+      }
+      return toInputDate(new Date(year, month, day));
+    }
+
+    function normalizeMonth(month) {
+      return month
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+    }
+
+    function toInputDate(date) {
+      const value = new Date(date);
+      const year = value.getFullYear();
+      const month = String(value.getMonth() + 1).padStart(2, "0");
+      const day = String(value.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    }
+
+    function addDays(isoDate, days) {
+      const date = parseIsoDate(isoDate);
+      date.setDate(date.getDate() + Number(days));
+      return toInputDate(date);
+    }
+
+    function formatLongDate(isoDate) {
+      if (!isoDate) {
+        return "-";
+      }
+      return parseIsoDate(isoDate).toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric"
+      });
+    }
+
+    function formatDateForDisplay(isoDate) {
+      return formatLongDate(isoDate);
+    }
+
+    function shortDate(isoDate) {
+      return parseIsoDate(isoDate).toLocaleDateString("en-GB", {
+        month: "short",
+        year: "2-digit"
+      });
+    }
+
+    function parseIsoDate(isoDate) {
+      const [year, month, day] = String(isoDate).split("-").map(Number);
+      return new Date(year, month - 1, day);
+    }
+
+    function setMessage(text) {
+      elements.formMessage.textContent = text;
+      window.clearTimeout(setMessage.timeoutId);
+      setMessage.timeoutId = window.setTimeout(() => {
+        elements.formMessage.textContent = "";
+      }, 3200);
+    }
+  </script>
+</body>
+</html>
